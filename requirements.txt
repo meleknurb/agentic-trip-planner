@@ -1,0 +1,9 @@
+streamlit>=1.35.0
+google-genai>=0.1.1
+pydantic>=2.7.0
+requests>=2.31.0
+pydeck>=0.8.0
+scikit-learn>=1.4.0
+numpy>=1.26.0
+supabase>=2.5.0
+pytest>=8.2.0
