@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Odyssey - Intelligent Itinerary Architect</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
+
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}" />
+</head>
+<body>  
+    {% include 'navbar.html' %}
+    
+    <div class="section-intro">
+        <div class="landing-container">
+            <h1>Odyssey Engine Mappings</h1>
+            <p>A custom-built data science framework that marries advanced RAG techniques with live geospatial verification systems.</p>
+        </div>
+    </div>
+
+    <section class="features-section">
+        <div class="landing-container">
+            <h2 class="main-features-title">Key Features</h2>
+
+            <div class="feature-grid">
+                
+                <div class="feature-item">
+                    <h3>Wikivoyage RAG</h3>
+                    <p>Dynamically ingests local cultural texts, historical background, and specific city essays to feed the core contextualization vector pipeline.</p>
+                </div>
+                
+                <div class="feature-item">
+                    <h3>Geospatial Sync</h3>
+                    <p>Directly queries nodes against the OpenStreetMap API, retrieving verified latitude and longitude metrics for every single suggested activity point.</p>
+                </div>
+                
+                <div class="feature-item">
+                    <h3>Deterministic Outputs</h3>
+                    <p>Enforces a strict, structural JSON schema validation layer over Gemini 2.5 Flash to ensure zero text-based hallucinations during scheduling.</p>
+                </div>
+                
+                <div class="feature-item">
+                    <h3>Balanced Time Blocks</h3>
+                    <p>The routing logic automatically partitions your custom day into fluid morning, afternoon, and evening activity sets based on target location density.</p>
+                </div>
+                
+                <div class="feature-item">
+                    <h3>Supabase Architecture</h3>
+                    <p>Stores all compiled routes, itineraries, and user log metrics reliably within a relational PostgreSQL schema running on the cloud backend.</p>
+                </div>
+                
+                <div class="feature-item">
+                    <h3>Row Level Security</h3>
+                    <p>Enforces strict RLS rules straight on the data tables, preventing cross-user workspace interference and safeguarding individual itinerary logs.</p>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <section class="about-us-section">
+        <div class="landing-container about-container-expanded">
+            <h2 class="about-title">About Odyssey</h2>
+            <p >Odyssey is built to eliminate the hours spent scrolling through chaotic, unverified travel data. By keeping our pipelines strict and our maps live, we build robust, deterministic pathways tailored to your target criteria.</p>
+            <div class="about-action-wrapper">
+                <a href="{{ url_for('dashboard') }}" class="primary-button">Get Started</a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="landing-container">
+            <p>&copy; 2026 Odyssey. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>
