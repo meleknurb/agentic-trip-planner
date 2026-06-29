@@ -1,0 +1,129 @@
+/* static/css/auth.css */
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
+    background-color: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+.auth-container {
+    background-color: #ffffff;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e0e6eb;
+    width: 100%;
+    max-width: 400px;
+    box-sizing: border-box;
+}
+
+.auth-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.8em;
+    font-weight: 700;
+    color: #1e293b;
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 24px;
+    letter-spacing: -0.5px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.9em;
+    font-weight: 500;
+    color: #1e293b;
+    margin-bottom: 6px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 0.95em;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background-color: #ffffff;
+    color: #1e293b;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-control:focus {
+    border-color: #0f172a; 
+    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.12);
+}
+
+.auth-submit-btn {
+    width: 100%;
+    background-color: #054882;
+    color: #ffffff;
+    padding: 12px;
+    font-size: 1em;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.auth-submit-btn:active {
+    transform: scale(0.98);
+}
+
+.auth-footer-text {
+    text-align: center;
+    margin-top: 24px;
+    font-size: 0.9em;
+    color: #1e293b;
+    margin-bottom: 0;
+}
+
+.auth-footer-text a {
+    color: #1e293b;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.auth-footer-text a:hover {
+    text-decoration: underline;
+}
+
+.auth-alert {
+    padding: 12px 14px;
+    font-size: 0.9em;
+    font-weight: 500;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    text-align: left;
+    line-height: 1.4;
+    animation: fadeInAlert 0.3s ease-in-out;
+}
+
+.alert-error {
+    background-color: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fee2e2;
+}
+
+@keyframes fadeInAlert {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
