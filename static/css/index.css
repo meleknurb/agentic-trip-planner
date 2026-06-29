@@ -3,9 +3,9 @@
 body {
     margin: 0;
     font-family: 'Roboto', sans-serif;
-    color: #2c3e50; /* Gözü yormayan koyu arduvaz gri */
+    color: #2c3e50;
     line-height: 1.6;
-    background-color: #f1f5f9; /* Ne bembeyaz ne karanlık; çok tatlı bir mat gri-mavi tonu */
+    background-color: #f1f5f9;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -20,7 +20,6 @@ body {
     box-sizing: border-box;
 }
 
-/* Başlık Alanı - Ortada Büyük Kutu YOK, Sadece Net Bir Giriş */
 .section-intro {
     padding: 50px 0 20px 0;
     text-align: center;
@@ -52,7 +51,6 @@ body {
     letter-spacing: -0.5px;
 }
 
-/* TaskFlow'dan Birebir Alınan Güçlü Kutu Düzeni (Feature Grid) */
 .features-section {
     padding: 30px 0;
     text-align: center;
@@ -66,7 +64,6 @@ body {
     padding: 0 20px;
 }
 
-/* TaskFlow'un Gerçek Kutuları: Gölge, Sınır Çizgisi ve Hover Karakteri */
 .feature-item {
     background-color: #ffffff;
     padding: 30px;
@@ -82,9 +79,8 @@ body {
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
-/* Kutuların İçindeki Başlıklar */
 .feature-item h3 {
-    color: #054882; /* Seyahate ve haritaya yakışan soft mavi tonu */
+    color: #054882;
     font-size: 1.4em;
     margin-top: 0;
     margin-bottom: 15px;
@@ -98,16 +94,13 @@ body {
     margin: 0;
 }
 
-/* Genişletilmiş About Odyssey Alanı */
 .about-us-section {
-    background-color: #e2e8f0; /* Mat ara ton zemin */
-    padding: 50px 0 90px 0;; /* Üst ve alttan dikey boşluğu neredeyse iki katına çıkardık */
+    background-color: #e2e8f0;
+    padding: 50px 0 90px 0;; 
     margin-top: 30px;
 }
-
-/* Konteyneri ve metni rahatlatmak için özel genişlik katmanı */
 .about-container-expanded {
-    max-width: 900px; /* Metnin çok fazla sağa sola yayılıp boğulmaması için ideal genişlik */
+    max-width: 900px;
     text-align: center;
 }
 
@@ -117,20 +110,19 @@ body {
     color: #1e293b;
     font-weight: 700;
     margin-top: 10px;
-    margin-bottom: 30px; /* Başlık ile metin arası boşluk */
+    margin-bottom: 30px;
     letter-spacing: -0.5px;
 }
 
 .about-text {
-    font-size: 100px !important; /* Metin boyutunu biraz büyüterek okumayı rahatlattık */
-    line-height: 1.8; /* Satır arası boşluğu artırdık, sıkışıklık bitti */
+    font-size: 100px !important;
+    line-height: 1.8;
     color: #334155;
-    margin: 0 auto 40px auto; /* Alttaki butonla arasına net bir mesafe koyduk */
+    margin: 0 auto 40px auto;
     max-width: 100%;
     font-weight: 500;
 }
 
-/* Butonun etrafındaki sarıcı alan */
 .about-action-wrapper {
     display: flex;
     justify-content: center;
@@ -140,7 +132,7 @@ body {
 
 .primary-button {
     display: inline-block;
-    background-color: #054882; /* Koyu, tok bir buton */
+    background-color: #054882; 
     color: white;
     padding: 16px 36px;
     border-radius: 8px;
@@ -157,7 +149,7 @@ body {
 }
 
 footer {
-    background-color: #1e293b; /* Navbar ile uyumlu alt bilgi çubuğu */
+    background-color: #1e293b;
     color: #94a3b8;
     padding: 5px 0;
     text-align: center;
@@ -165,7 +157,6 @@ footer {
     margin-top: auto;
 }
 
-/* Responsive Katmanlar */
 @media (max-width: 768px) {
     .section-intro h1 { font-size: 2.2em; }
     .feature-grid { grid-template-columns: 1fr; padding: 0 15px; }
