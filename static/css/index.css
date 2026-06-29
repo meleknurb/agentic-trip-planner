@@ -1,0 +1,172 @@
+/* static/css/index.css */
+
+body {
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+    color: #2c3e50; /* Gözü yormayan koyu arduvaz gri */
+    line-height: 1.6;
+    background-color: #f1f5f9; /* Ne bembeyaz ne karanlık; çok tatlı bir mat gri-mavi tonu */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overflow-x: hidden; 
+}
+
+.landing-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Başlık Alanı - Ortada Büyük Kutu YOK, Sadece Net Bir Giriş */
+.section-intro {
+    padding: 50px 0 20px 0;
+    text-align: center;
+}
+
+.section-intro h1 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 2.8em;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 15px;
+}
+
+.section-intro p {
+    font-size: 1.2em;
+    color: #475569;
+    max-width: 750px;
+    margin: 0 auto;
+}
+
+.main-features-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 2.2em;
+    color: #1e293b;
+    font-weight: 700;
+    margin-top: 0;
+    margin-bottom: 40px;
+    text-align: center;
+    letter-spacing: -0.5px;
+}
+
+/* TaskFlow'dan Birebir Alınan Güçlü Kutu Düzeni (Feature Grid) */
+.features-section {
+    padding: 30px 0;
+    text-align: center;
+}
+
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 30px;
+    justify-content: center;
+    padding: 0 20px;
+}
+
+/* TaskFlow'un Gerçek Kutuları: Gölge, Sınır Çizgisi ve Hover Karakteri */
+.feature-item {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); /* TaskFlow'un o derin el yapımı gölgesi */
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid #e0e6eb;
+    text-align: left;
+}
+
+.feature-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Kutuların İçindeki Başlıklar */
+.feature-item h3 {
+    color: #054882; /* Seyahate ve haritaya yakışan soft mavi tonu */
+    font-size: 1.4em;
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-weight: 700;
+}
+
+.feature-item p {
+    color: #555555;
+    font-size: 1.05em;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* Genişletilmiş About Odyssey Alanı */
+.about-us-section {
+    background-color: #e2e8f0; /* Mat ara ton zemin */
+    padding: 50px 0 90px 0;; /* Üst ve alttan dikey boşluğu neredeyse iki katına çıkardık */
+    margin-top: 30px;
+}
+
+/* Konteyneri ve metni rahatlatmak için özel genişlik katmanı */
+.about-container-expanded {
+    max-width: 900px; /* Metnin çok fazla sağa sola yayılıp boğulmaması için ideal genişlik */
+    text-align: center;
+}
+
+.about-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 2.2em;
+    color: #1e293b;
+    font-weight: 700;
+    margin-top: 10px;
+    margin-bottom: 30px; /* Başlık ile metin arası boşluk */
+    letter-spacing: -0.5px;
+}
+
+.about-text {
+    font-size: 100px !important; /* Metin boyutunu biraz büyüterek okumayı rahatlattık */
+    line-height: 1.8; /* Satır arası boşluğu artırdık, sıkışıklık bitti */
+    color: #334155;
+    margin: 0 auto 40px auto; /* Alttaki butonla arasına net bir mesafe koyduk */
+    max-width: 100%;
+    font-weight: 500;
+}
+
+/* Butonun etrafındaki sarıcı alan */
+.about-action-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 30px;
+}
+
+.primary-button {
+    display: inline-block;
+    background-color: #054882; /* Koyu, tok bir buton */
+    color: white;
+    padding: 16px 36px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 1.1em;
+    font-weight: bold;
+    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.primary-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+}
+
+footer {
+    background-color: #1e293b; /* Navbar ile uyumlu alt bilgi çubuğu */
+    color: #94a3b8;
+    padding: 5px 0;
+    text-align: center;
+    font-size: 0.95em;
+    margin-top: auto;
+}
+
+/* Responsive Katmanlar */
+@media (max-width: 768px) {
+    .section-intro h1 { font-size: 2.2em; }
+    .feature-grid { grid-template-columns: 1fr; padding: 0 15px; }
+}
