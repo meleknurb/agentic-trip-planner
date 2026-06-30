@@ -1,3 +1,5 @@
+# core/schemas.py
+
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
@@ -28,3 +30,4 @@ class TripItineraryModel(BaseModel):
     title: str = Field(description="Elegant title for the travel plan (e.g., Historical and Culinary Delights in Bursa)")
     city: str = Field(description="The name of the city being visited")
     days: List[DayPlanModel] = Field(description="Day-by-day travel plan details")
+    rag_context: str = Field(description="Your tailored English Markdown summary based on the guide data and user preferences.")
