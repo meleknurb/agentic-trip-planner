@@ -61,9 +61,9 @@ class MapService:
 
         self.session = requests.Session()
         retry_strategy = Retry(
-            total=3,  # En fazla 3 kez yeniden dene
-            backoff_factor=1,  # İstekler arası bekleme süresini katlayarak artır (1s, 2s, 4s)
-            status_forcelist=[429, 500, 502, 503, 504],  # Bu hata kodlarını alınca pes etme, tekrar dene
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
         )
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("http://", adapter)
