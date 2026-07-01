@@ -5,8 +5,15 @@
         <a href="{{ url_for('index') }}" class="nav-logo">Odyssey</a>
         <ul class="nav-links">
             <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
-            <li><a href="{{ url_for('login') }}" class="nav-login">Sign In</a></li>
-            <li><a href="{{ url_for('register') }}" class="nav-register">Sign Up</a></li>
+
+            {% if current_user.is_authenticated %}
+                <li><a href="{{ url_for('history') }}">Saved Routes</a></li>
+                <li><a href="{{ url_for('logout') }}" class="nav-logout">Log Out</a></li>
+            {% else %}
+                <li><a href="{{ url_for('login') }}" class="nav-login">Sign In</a></li>
+                <li><a href="{{ url_for('register') }}" class="nav-register">Sign Up</a></li>
+            {% endif %}
+            
         </ul>
     </div>
 </nav>
