@@ -501,3 +501,21 @@ body {
 .hidden {
     display: none !important;
 }
+
+/* RUNTIME OPERATIONAL FEEDBACK NOTIFICATIONS */
+
+#runtimeFeedback {
+    padding: 14px;
+    border-radius: 8px;
+    margin-bottom: 13px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: center;
+    transition: all 0.3s ease-in-out;
+}
+
+.error-feedback {
+    background-color: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fee2e2;
+}
