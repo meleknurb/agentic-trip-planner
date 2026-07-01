@@ -1,0 +1,503 @@
+/* static/css/dashboard.css */
+
+/* GLOBAL & CORE LAYOUT DEFINITIONS */
+
+body {
+    background-color: #f8fafc;
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.dashboard-wrapper {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+}
+
+@media (min-width: 1024px) {
+    .dashboard-wrapper {
+        grid-template-columns: 380px 1fr;
+    }
+}
+
+/* REUSABLE CARDS & BASIC PANELS STYLE */
+
+.panel-card, .content-box, .status-card {
+    background: #ffffff;
+    padding: 24px;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.panel-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-top: 0;
+    margin-bottom: 20px;
+}
+
+.content-box {
+    margin-bottom: 24px;
+}
+
+.box-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-top: 0;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* SIDEBAR FORM CONTROL PANEL & INPUTS */
+
+.dashboard-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label, .group-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #0f172a;
+    margin-bottom: 6px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"] {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #0f172a;
+    outline: none;
+    transition: all 0.2s ease-in-out;
+    box-sizing: border-box;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="number"]:focus {
+    border-color: #0f172a;
+    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.12);
+}
+
+/* INTEREST CATEGORIES & CHECKBOX INTERFACES */
+
+.interests-container {
+    background-color: #f1f5f9;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    padding-right: 8px;
+    max-height: 230px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #334155;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 6px;
+    transition: background 0.15s ease;
+}
+
+.checkbox-label:hover {
+    background-color: #ffffff;
+}
+
+.checkbox-label input {
+    width: 16px;
+    height: 16px;
+    accent-color: #0f172a;
+    cursor: pointer;
+}
+
+/* INTERACTION BUTTONS & TOGGLES */
+
+.dashboard-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: #054882;
+    color: #ffffff;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.2);
+    transition: background 0.2s ease;
+}
+
+.dashboard-btn:disabled {
+    background-color: #94a3b8;
+    cursor: not-allowed;
+}
+
+.toggle-link-btn {
+    background: none;
+    border: none;
+    color: #0f172a;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 8px;
+}
+
+.modern-toggle-btn {
+    background: #f1f5f9;
+    color: #475569;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.modern-toggle-btn:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+/* ASYNCHRONOUS STATES (LOADING, SPINNER, EMPTY) */
+
+.status-card {
+    text-align: center;
+    padding: 48px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.emoji-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+}
+
+.empty-card .main-text {
+    font-weight: 500;
+    color: #334155;
+    margin: 0 0 8px 0;
+}
+
+.empty-card .sub-text {
+    font-size: 0.85rem;
+    color: #64748b;
+    max-width: 400px;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.spinner {
+    border: 4px solid #e2e8f0;
+    border-top: 4px solid #0f172a;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    color: #334155;
+    font-weight: 500;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .5; }
+}
+
+/* INTERACTIVE MAP BOX TIMELINE LAYOUT */
+
+#map {
+    height: 400px;
+    width: 100%;
+    border-radius: 12px;
+    z-index: 1;
+    margin-top: 12px;
+}
+
+#mapTitle {
+    font-weight: 500;
+}
+
+#itineraryContent:not(.hidden) #map {
+    width: 100% !important;
+    height: 400px !important;
+}
+
+/* ITINERARY GENERAL FEED & HEADERS */
+
+.details-header {
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+}
+
+#planTitle {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: #0f172a;
+    margin: 0;
+}
+
+#planMeta {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 6px 0 0 0;
+}
+
+.timeline-container {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+/* INDIVIDUAL DAY TIMELINE NODES */
+
+.day-timeline-card {
+    position: relative;
+    border-left: 2px dashed #cbd5e1;
+    padding-left: 24px;
+}
+
+.timeline-dot {
+    position: absolute;
+    left: -7px;
+    top: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #0f172a;
+    border: 3px solid #ffffff;
+    box-shadow: 0 0 0 2px #0f172a;
+}
+
+.day-timeline-card h3 {
+    margin: 0 0 20px 0;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+/* DAILY TIMELINE SLOTS (MORNING, AFTERNOON, EVENING GRIDS) */
+
+.slots-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+@media (min-width: 768px) {
+    .slots-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.slot-column {
+    background-color: #f8fafc;
+    padding: 18px;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.slot-name {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 0;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 6px;
+}
+
+/* ACTIVITY FEED COMPONENT CARDS */
+
+.activity-item {
+    background: #ffffff;
+    padding: 14px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 4px rgba(15, 23, 42, 0.02);
+    transition: all 0.2s ease;
+    margin-bottom: 0;
+}
+
+.activity-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+    border-color: #cbd5e1;
+}
+
+.activity-item .act-name {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 0.9rem;
+    margin: 0 0 6px 0;
+    line-height: 1.3;
+}
+
+.activity-item .act-why {
+    color: #475569;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.no-activity-text {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    font-style: italic;
+    margin: 4px 0;
+}
+
+/* EXTRA TRIP NOTES & SUGGESTION KITS */
+
+.day-tips-box {
+    background-color: #fffdf5;
+    border: 1px solid #fef3c7;
+    padding: 14px 18px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    color: #92400e;
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    line-height: 1.5;
+}
+
+.day-tips-box p {
+    margin: 0;
+}
+
+/* CITY CULTURAL GUIDE & MODERN RAG INTERFACES */
+
+.city-guide-section {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+.guide-header-action {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.guide-main-title {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #0f172a;
+    margin: 0;
+}
+
+#ragBox {
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: #475569;
+    white-space: pre-wrap;
+    background-color: #f8fafc;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    max-height: 240px;
+    overflow-y: auto;
+    margin: 8px 0 0 0;
+}
+
+.modern-guide-box {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+    background-color: #f8fafc !important;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 12px;
+    color: #334155;
+    line-height: 1.7;
+    font-size: 0.95rem;
+    white-space: normal !important;
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+}
+
+.modern-guide-box p {
+    margin-bottom: 14px;
+}
+
+.modern-guide-box strong {
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.modern-guide-box ul {
+    margin-top: 8px;
+    margin-bottom: 16px;
+    padding-left: 24px;
+    list-style-type: disc;
+}
+
+.modern-guide-box li {
+    margin-bottom: 8px;
+}
+
+.loading-placeholder {
+    color: #94a3b8;
+    font-style: italic;
+}
+
+/* SYSTEM-WIDE UTILITY SCOPES */
+
+.hidden {
+    display: none !important;
+}
