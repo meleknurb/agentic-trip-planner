@@ -1,0 +1,143 @@
+<!-- templates/dashboard.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Odyssey</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Montserrat:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+
+    {% include 'navbar.html' %}
+
+    <div class="dashboard-wrapper">
+        
+        <aside class="control-panel">
+            <div class="panel-card">
+                <h3 class="panel-title">Route Criteria</h3>
+                <form id="itineraryForm" class="dashboard-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="form-group">
+                        <label for="city">Where do you want to go?</label>
+                        <input type="text" id="city" required placeholder="e.g. New York, Paris, Tokyo...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="duration">How many days?</label>
+                        <input type="number" id="duration" min="1" max="7" value="3">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="group-label">Categories to Explore</label>
+                        <div class="interests-container">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="interests" value="history">
+                                <span>🏰 Historic Castles & Heritage Sites</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="interests" value="museums">
+                                <span>🖼️ Museums & Art Galleries</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="interests" value="scenic">
+                                <span>📸 Panoramic Viewpoints & Landscapes</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="interests" value="food">
+                                <span>🍽️ Fine Dining & Local Gastronomy</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="interests" value="coffee">
+                                <span>☕ Specialty Cafes & Bakeries</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="interests" value="outdoors">
+                                <span>🌳 Botanical Parks & Nature Reserves</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="interests" value="nightlife">
+                                <span>🍷 Nightlife, Bars & Local Pubs</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="interests" value="shopping">
+                                <span>🛍️ Local Markets & Shopping Districts</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="interests" value="entertainment">
+                                <span>🎡 Theme Parks & Family Attractions</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="generateBtn" class="dashboard-btn">
+                        <span>🗺️ Draw Route</span>
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <main class="content-panel">
+            
+            <div id="loadingState" class="hidden status-card loading-card">
+                <div class="spinner"></div>
+                <p class="animate-pulse">Gathering live map data and generating your personalized itinerary...</p>
+            </div>
+
+            <div id="emptyState" class="status-card empty-card">
+                <span class="emoji-icon">🌍</span>
+                <p class="main-text">No route selected to view.</p>
+                <p class="sub-text">Use the left panel to generate a new trip or access your saved plans from the navigation bar.</p>
+            </div>
+
+            <div id="itineraryContent" class="hidden dynamic-content">
+                
+                <div class="content-box">
+                    <h3 class="box-title">
+                        <span id="mapTitle">Route Map</span>
+                    </h3>
+                    <div id="map"></div>
+                </div>
+
+                <div class="city-guide-section">
+                    <div class="guide-header-action">
+                        <h3 class="guide-main-title">📖 City Guide</h3>
+                        <button onclick="toggleRag()" class="modern-toggle-btn">Show / Hide Notes</button>
+                    </div>
+    
+                    <div id="ragBox" class="modern-guide-box hidden">
+                        <p class="loading-placeholder">Searching for cultural guide notes...</p>
+                    </div>
+                </div>
+
+                <div class="content-box main-details-card">
+                    <div class="details-header">
+                        <h2 id="planTitle"></h2>
+                        <p id="planMeta"></p>
+                    </div>
+                    
+                    <div id="daysContainer" class="timeline-container"></div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
