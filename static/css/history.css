@@ -180,7 +180,7 @@ body {
 .go-dashboard-btn {
     display: inline-block;
     margin-top: 16px;
-    background-color: #0f172a;
+    background-color: #054882;
     color: #ffffff;
     text-decoration: none;
     padding: 10px 20px;
@@ -188,10 +188,6 @@ body {
     font-size: 0.85rem;
     font-weight: 500;
     transition: background 0.2s;
-}
-
-.go-dashboard-btn:hover {
-    background-color: #1e293b;
 }
 
 /* Asynchronous Component Spinner */
