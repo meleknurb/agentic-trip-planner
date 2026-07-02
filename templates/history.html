@@ -1,0 +1,112 @@
+<!-- templates/history.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Saved Routes - Odyssey</title>
+    
+    <!-- Core Brand Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Geospatial Leaflet Engine Core Style Sheet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Application Structural Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/history.css') }}">
+
+    <!-- Markdown Engine Parser Injection -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+
+    {% include 'navbar.html' %}
+
+    <div class="history-layout">
+        <!-- LEFT SIDEBAR: SAVED ROUTES RECORDS LIST -->
+        <div class="history-sidebar">
+            <header class="history-header">
+                <h1 class="history-title">My Saved Routes</h1>
+                <p class="history-subtitle">Click on a route to load its map and full itinerary details.</p>
+            </header>
+
+            <div class="routes-wrapper">
+                {% for it in itineraries %}
+                    <div class="route-card" id="route-{{ it.id }}" onclick="loadRouteDetails('{{ it.id }}')">
+                        <div class="route-info">
+                            <div class="route-main">
+                                <span class="route-emoji">🌍</span>
+                                <div>
+                                    <h3 class="route-card-title">{{ it.title }}</h3>
+                                    <p class="route-meta"><strong>{{ it.city }}</strong> • {{ it.total_days }} Days</p>
+                                </div>
+                            </div>
+                            <div class="route-footer-meta">
+                                <p class="route-date">{{ it.created_at.strftime('%b %d, %Y') if it.created_at else 'Recent' }}</p>
+                                <button onclick="deleteRoute(event, '{{ it.id }}')" class="delete-btn" title="Delete Route">🗑️</button>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="empty-history-card">
+                        <span class="empty-emoji">🗺️</span>
+                        <h3>No saved routes yet</h3>
+                        <p>You haven't generated or saved any itineraries yet.</p>
+                        <a href="{{ url_for('dashboard') }}" class="go-dashboard-btn">Go to Dashboard</a>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- CORE GEOSPATIAL VECTOR MAP AND DETAIL TIMELINE TREE -->
+        <div class="history-main-content">
+            <!-- Default Initialization View State -->
+            <div id="detailsEmptyState" class="details-empty-state">
+                <span class="compass-emoji">🧭</span>
+                <h2>Select a Route</h2>
+                <p>Click on any travel route from the left sidebar to visualize the map and explore the day-by-day scheduled activities.</p>
+            </div>
+
+            <!-- Asynchronous Operational Loading State Overlay -->
+            <div id="detailsLoadingState" class="details-loading-state hidden">
+                <div class="spinner"></div>
+                <p>Retrieving itinerary blueprint...</p>
+            </div>
+
+            <!-- Target Itinerary Render Matrix -->
+            <div id="itineraryDetailContent" class="itinerary-detail-content hidden">
+                <div class="detail-header-block">
+                    <h2 id="planTitle">Plan Title</h2>
+                    <p id="planMeta">Destination Details</p>
+                </div>
+
+                <!-- Geospatial Interactive Node Vector Panel -->
+                <div class="map-wrapper">
+                    <h3 id="mapTitle">Route Map View</h3>
+                    <div id="historyMap"></div>
+                </div>
+
+                <!-- Cultural Guide Knowledge base (RAG Integration Layer) -->
+                <div class="rag-info-container">
+                    <button class="rag-toggle-btn" onclick="toggleRag()">🗺️ Destination Cultural Insights</button>
+                    <div id="historyRagBox" class="modern-guide-box hidden"></div>
+                </div>
+
+                <!-- Micro-Timeline Day Activity Grid Hierarchy -->
+                <div class="timeline-wrapper">
+                    <div id="daysTimelineContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- External Runtime Execution Pipelines -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="{{ url_for('static', filename='js/history.js') }}"></script>
+</body>
+</html>
