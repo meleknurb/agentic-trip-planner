@@ -27,6 +27,7 @@ class Itinerary(db.Model):
     title = db.Column(db.String(200), nullable=False)
     total_days = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.now())
+    interests = db.Column(db.JSON, nullable=True, default=list)
     rag_context = db.Column(db.Text, nullable=True, default="")
 
     days = db.relationship('ItineraryDay', backref='itinerary', lazy=True, cascade="all, delete-orphan")
