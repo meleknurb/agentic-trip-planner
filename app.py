@@ -179,6 +179,7 @@ def generate_itinerary():
             city=itinerary_data.city,
             title=itinerary_data.title,
             total_days=len(itinerary_data.days),
+            interests=detected_interests,
             rag_context=itinerary_data.rag_context
         )
         db.session.add(new_itinerary)
@@ -243,6 +244,7 @@ def get_itinerary(itinerary_id):
         "title": itinerary.title,
         "city": itinerary.city,
         "total_days": itinerary.total_days,
+        "interests": itinerary.interests,
         "rag_context": itinerary.rag_context,
         "days": []
     }
@@ -287,4 +289,6 @@ def delete_itinerary(itinerary_id):
 
 
 if __name__ == "__main__":
+    # with app.app_context():
+    #    db.create_all()  # Ensure all database tables are created before the first request
     app.run(debug=True)
