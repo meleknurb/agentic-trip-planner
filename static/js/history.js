@@ -70,7 +70,10 @@ async function loadRouteDetails(id) {
 
             // Headings and Metadata Localization Updates
             document.getElementById("planTitle").innerText = data.title;
-            document.getElementById("planMeta").innerText = `City: ${data.city} • Total Duration: ${data.total_days} Days`;
+
+            const formattedInterests = data.interests ? data.interests.map(i => i.charAt(0).toUpperCase() + i.slice(1)).join(', ') : '';
+            document.getElementById("planMeta").innerText = `City: ${data.city} • Total Duration: ${data.total_days} Days${formattedInterests ? ` • Interests: ${formattedInterests}` : ''}`;
+            
             document.getElementById("mapTitle").innerText = `${data.city} Route Map`;
 
             // Micro-Timeline Chronological Card Matrix Ingestion
