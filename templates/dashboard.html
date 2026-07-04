@@ -131,6 +131,24 @@
                     </div>
                     
                     <div id="daysContainer" class="timeline-container"></div>
+
+                    <div class="regen-wrapper">
+                        <button id="openRegenBtn" class="regen-toggle-btn" onclick="toggleRegenBox()">
+                            Dislike this plan? Customize & Regenerate 🔄
+                        </button>
+                        
+                        <div id="regenBox" class="regen-box hidden">
+                            <div class="regeneration-hint-box">
+                                Tip: To update interests or duration, please adjust the fields above before clicking regenerate! To change the destination city, please use the left panel to draw a new route instead!
+                            </div>
+                            <textarea id="regenFeedback" placeholder="Tell the AI what to change... (e.g., 'Make it less intense', 'Remove museums and add more parks', 'Find budget-friendly dinner options')"></textarea>
+                            <div class="regen-actions">
+                                <button id="submitRegenBtn" class="regen-submit-btn" onclick="submitPlanRegeneration()">
+                                    Apply Adjustments 
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
