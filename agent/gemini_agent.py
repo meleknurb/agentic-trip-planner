@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from core.config import Config
 from core.schemas import TripItineraryModel, POIModel
-from agent.prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
+from agent.prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, REGENERATE_PROMPT_TEMPLATE
 
 
 class GeminiAgent:
@@ -61,3 +61,43 @@ class GeminiAgent:
             raise RuntimeError(f"Gemini output structural validation failed against TripItineraryModel: {str(ve)}")
         except Exception as e:
             raise RuntimeError(f"Gemini Agent execution failed due to an unexpected error: {str(e)}")
+
+    def regenerate_itinerary(self, city_name: str, total_days: int, live_pois: list[POIModel], old_itinerary_text: str, feedback: str, rag_context: str, interests: list[str]) -> TripItineraryModel:
+        """Modifies and rebuilds an existing travel layout by forcing Gemini to ingest custom user feedback."""
+        
+        if not live_pois:
+            raise ValueError("Cannot regenerate an itinerary without live map points.")
+
+        map_points_data = [poi.model_dump() for poi in live_pois]
+        map_points_json = json.dumps(map_points_data, ensure_ascii=False, indent=2)
+
+        user_content = REGENERATE_PROMPT_TEMPLATE.format(
+            city_name=city_name,
+            total_days=total_days,
+            old_itinerary_text=old_itinerary_text,
+            feedback=feedback,
+            map_points_json=map_points_json,
+            rag_context=rag_context,
+            interests=interests
+        )
+
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=user_content,
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    temperature=0.4, # Slightly higher temperature for creative adjustments
+                    response_mime_type="application/json",
+                    response_schema=TripItineraryModel, 
+                ),
+            )
+
+            return TripItineraryModel.model_validate_json(response.text)
+
+        except APIError as ae:
+            raise RuntimeError(f"Gemini API Error during regeneration: {ae.message} (Status Code: {ae.code})")
+        except ValidationError as ve:
+            raise RuntimeError(f"Gemini output structural validation failed during regeneration: {str(ve)}")
+        except Exception as e:
+            raise RuntimeError(f"Gemini Agent regeneration pipeline failed: {str(e)}")
