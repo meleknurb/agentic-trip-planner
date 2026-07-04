@@ -1,4 +1,5 @@
 # app.py
+
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_wtf.csrf import CSRFProtect
@@ -230,7 +231,139 @@ def generate_itinerary():
             "success": False,
             "message": f"Engine failure: {str(e)}"
         }), 500
+    
 
+@app.route("/regenerate_itinerary", methods=["POST"])
+@login_required
+def regenerate_itinerary():
+    """Re-orchestrates an existing travel plan by integrating iterative AI modifications based on user feedback."""
+
+    data = request.get_json() or {}
+
+    itinerary_id = data.get("itinerary_id")
+    feedback = (data.get("feedback") or "").strip()
+    new_interests = data.get("interests")
+    new_duration = data.get("duration")
+
+    if not itinerary_id:
+        return jsonify({
+            "success": False,
+            "message": "Itinerary id is required."
+        }), 400
+
+    if not feedback:
+        return jsonify({
+            "success": False,
+            "message": "Feedback cannot be empty."
+        }), 400
+
+    try:
+        current_itinerary = Itinerary.query.filter_by(id=itinerary_id,user_id=current_user.id).first()
+
+        if not current_itinerary:
+            return jsonify({
+                "success": False,
+                "message": "Itinerary not found."
+            }), 404
+
+        city = current_itinerary.city
+        interests = (new_interests if new_interests else current_itinerary.interests)
+        duration = (int(new_duration) if new_duration else current_itinerary.total_days)
+
+        lines = []
+
+        for day in current_itinerary.days:
+            lines.append(f"Day {day.day_number}")
+
+            for act in day.activities:
+                lines.append(
+                    f"- {act.slot}: {act.name} ({act.category})"
+                )
+
+        old_itinerary_text = "\n".join(lines)
+
+
+        lat, lon = map_service.get_coordinates(city)
+        live_pois = map_service.fetch_live_pois(lat, lon, interests=interests)
+
+        if not live_pois:
+            return jsonify({
+                "success": False,
+                "message": f"No POIs found for {city}."
+            }), 404
+
+        poi_lookup = {poi.poi_id: poi for poi in live_pois}
+
+        rag_context = rag_service.retrieve_relevant_context(city_name=city, interests=interests)
+
+        itinerary_data = agent.regenerate_itinerary(
+            city_name=city,
+            total_days=duration,
+            live_pois=live_pois,
+            old_itinerary_text=old_itinerary_text,
+            feedback=feedback,
+            rag_context=rag_context,
+            interests=interests
+        )
+
+        current_itinerary.days.clear()
+        db.session.flush()
+
+        current_itinerary.title = itinerary_data.title
+        current_itinerary.rag_context = itinerary_data.rag_context
+        current_itinerary.total_days = duration
+        current_itinerary.interests = interests
+
+        for day_plan in itinerary_data.days:
+
+            new_day = ItineraryDay(
+                itinerary_id=current_itinerary.id,
+                day_number=day_plan.day,
+                notes=day_plan.notes
+            )
+
+            db.session.add(new_day)
+            db.session.flush()
+
+            slots = {
+                "morning": day_plan.morning,
+                "afternoon": day_plan.afternoon,
+                "evening": day_plan.evening
+            }
+
+            for slot_name, activities in slots.items():
+                for block in activities:
+
+                    poi = poi_lookup.get(block.poi_id)
+
+                    activity = ItineraryActivity(
+                        day_id=new_day.id,
+                        slot=slot_name,
+                        poi_id=block.poi_id,
+                        name=poi.name if poi else "Unknown Destination",
+                        category=poi.category if poi else "General",
+                        why=block.why,
+                        latitude=poi.lat if poi else None,
+                        longitude=poi.lon if poi else None
+                    )
+
+                    db.session.add(activity)
+
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Itinerary regenerated successfully.",
+            "itinerary_id": current_itinerary.id
+        })
+
+    except Exception as e:
+        db.session.rollback()
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
 
 @app.route("/get_itinerary/<int:itinerary_id>")
 @login_required
