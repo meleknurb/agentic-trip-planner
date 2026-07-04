@@ -10,8 +10,9 @@ from core.config import Config
 
 INTEREST_TO_TAGS: Dict[str, List[Tuple[str, str]]] = {
     "history": [
-        ("historic", "castle|monument|ruins|archaeological_site|tomb|battlefield"),
-        ("tourism", "attraction")
+        ("historic", "castle|monument|ruins|archaeological_site|tomb|battlefield|palace|church|mosque"),
+        ("tourism", "attraction|building"),
+        ("amenity", "place_of_worship")
     ],
     "museums": [
         ("tourism", "museum|gallery"),
@@ -43,11 +44,12 @@ INTEREST_TO_TAGS: Dict[str, List[Tuple[str, str]]] = {
         ("leisure", "amusement_arcade|water_park")
     ]
 }
+
 DEFAULT_TAGS: List[Tuple[str, str]] = [
     ("tourism", "museum|viewpoint|attraction"),
-    ("historic", "castle|monument|ruins"),
-    ("leisure", "park|garden"),
-    ("amenity", "restaurant|cafe")
+    ("historic", "castle|monument|ruins|palace"),
+    ("amenity", "place_of_worship|restaurant|cafe"),
+    ("leisure", "park|garden")
 ]
 
 class MapService:
@@ -90,7 +92,7 @@ class MapService:
         except Exception as e:
             raise RuntimeError(f"Geocoding service error: {str(e)}")
 
-    def fetch_live_pois(self, lat: float, lon: float, interests: List[str], radius_meters: int = 3000) -> List[POIModel]:
+    def fetch_live_pois(self, lat: float, lon: float, interests: List[str], radius_meters: int = 10000) -> List[POIModel]:
         """Fetch live points of interest (POIs) around the specified coordinates using Overpass QL."""
         target_tags = []
         if interests:
@@ -105,7 +107,6 @@ class MapService:
         node_queries = ""
         for key, val in target_tags:
             node_queries += f'node["{key}"~"{val}"](around:{radius_meters},{lat},{lon});'
-            node_queries += f'way["{key}"~"{val}"](around:{radius_meters},{lat},{lon});'
             
         overpass_query = f"""
         [out:json][timeout:60];
