@@ -256,6 +256,8 @@ body {
 
 /* CULTURAL GUIDE INSIGHTS NODE */
 .rag-info-container { 
+    margin-bottom: 24px;
+    padding-bottom: 24px;
     background-color: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
@@ -263,13 +265,11 @@ body {
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
     display: flex;
     flex-direction: column;
-    gap: 12px; /* Buton ile açılan kutu arasındaki boşluk */
-    margin-bottom: 24px;
-    padding-bottom: 24px; /* Alt boşluk, buton ile kutu arasındaki boşluğu artırır */
+    gap: 12px;
 }
 
 .rag-toggle-btn {
-    align-self: flex-start; /* Butonun tüm satırı kaplamasını engeller, sola yaslar */
+    align-self: flex-start; 
     background-color: #f1f5f9;
     color: #0f172a;
     border: 1px solid #cbd5e1;
