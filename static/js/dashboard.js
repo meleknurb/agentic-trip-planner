@@ -1,9 +1,10 @@
-/* static/js/dashboard.js */
+// static/js/dashboard.js //
 
 // GLOBAL STATE & CORE INSTANTIATION
 
 let map = null;
 let markersGroup = null;
+let currentLoadedItineraryId = null; // Track current id globally for iterative updates
 
 /**
  * Initializes or updates the interactive Leaflet map instance.
@@ -38,6 +39,16 @@ function resetViewState() {
  */
 function toggleRag() {
     document.getElementById("ragBox").classList.toggle("hidden");
+}
+
+/**
+ * Toggles the visibility of the iterative AI regeneration input area.
+ */
+function toggleRegenBox() {
+    const regenBox = document.getElementById("regenBox");
+    if (regenBox) {
+        regenBox.classList.toggle("hidden");
+    }
 }
 
 /**
@@ -88,6 +99,15 @@ async function loadItineraryData(id) {
 
         if (res.success) {
             const data = res.data;
+
+            // Cache the currently loaded id to power targeted regeneration requests
+            currentLoadedItineraryId = id;
+
+            // Reset inputs within the regeneration module
+            const feedbackInput = document.getElementById("regenFeedback");
+            if (feedbackInput) feedbackInput.value = "";
+            const regenBox = document.getElementById("regenBox");
+            if (regenBox) regenBox.classList.add("hidden");
 
             //  RAG Markdown Context Rendering Pipeline
             const ragBox = document.getElementById("ragBox");
@@ -212,6 +232,78 @@ async function loadItineraryData(id) {
     } catch (err) {
         renderFeedbackMessage("An error occurred while building the route visual layout: " + err);
         resetViewState();
+    }
+}
+
+/**
+ * Dispatches a revision feedback request to the iterative AI agent pipeline.
+ * Repaints the visual canvas asynchronously without breaking map contexts.
+ */
+async function submitPlanRegeneration() {
+    const feedbackText = document.getElementById("regenFeedback").value.trim();
+    const submitBtn = document.getElementById("submitRegenBtn");
+
+    if (!feedbackText) {
+        alert("Please specify what you would like the AI to change before applying adjustments.");
+        return;
+    }
+
+    if (!currentLoadedItineraryId) {
+        renderFeedbackMessage("No active itinerary reference target discovered to direct updates.");
+        return;
+    }
+
+    const checkedInterests = [];
+    document.querySelectorAll('input[name="interests"]:checked').forEach(cb => {
+        checkedInterests.push(cb.value);
+    });
+
+    const durationSelectElement = document.getElementById("duration");
+    const duration = durationSelectElement ? durationSelectElement.value : null;
+
+    // Enter temporary micro-loading cycle
+    submitBtn.disabled = true;
+    submitBtn.innerText = "Rebuilding Plan... ⏳";
+    
+    document.getElementById("itineraryContent").classList.add("hidden");
+    document.getElementById("loadingState").classList.remove("hidden");
+
+    // Retrieve CSRF token using the original pattern of the application
+    const csrfTokenElement = document.querySelector('input[name="csrf_token"]');
+    const token = csrfTokenElement ? csrfTokenElement.value : "";
+
+    try {
+        const response = await fetch("/regenerate_itinerary", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": token
+            },
+            body: JSON.stringify({ 
+                itinerary_id: currentLoadedItineraryId, 
+                feedback: feedbackText,
+                interests: checkedInterests,
+                duration: duration
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Hot reload core content nodes directly using the target orchestration framework
+            await loadItineraryData(result.itinerary_id);
+        } else {
+            renderFeedbackMessage(`AI Regeneration failed: ${result.message || 'Unknown internal service exception.'}`);
+            document.getElementById("loadingState").classList.add("hidden");
+            document.getElementById("itineraryContent").classList.remove("hidden");
+        }
+    } catch (err) {
+        renderFeedbackMessage("A network failure occurred during iterative reconstruction: " + err);
+        document.getElementById("loadingState").classList.add("hidden");
+        document.getElementById("itineraryContent").classList.remove("hidden");
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = "Apply Adjustments";
     }
 }
 
