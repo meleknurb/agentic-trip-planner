@@ -99,6 +99,28 @@ async function loadItineraryData(id) {
 
         if (res.success) {
             const data = res.data;
+            
+            // Auto-populate sidebar form fields with fetched itinerary data to preserve UX state.
+            const cityInput = document.getElementById("city");
+            if (cityInput && data.city) {
+                cityInput.value = data.city;
+            }
+
+            const durationInput = document.getElementById("duration");
+            if (durationInput && data.total_days) {
+                durationInput.value = data.total_days;
+            }
+
+            if (data.interests && Array.isArray(data.interests)) {
+                const checkboxes = document.querySelectorAll('input[name="interests"]');
+                checkboxes.forEach(checkbox => {
+                    if (data.interests.includes(checkbox.value)) {
+                        checkbox.checked = true;
+                    } else {
+                        checkbox.checked = false;
+                    }
+                });
+            }
 
             // Cache the currently loaded id to power targeted regeneration requests
             currentLoadedItineraryId = id;
