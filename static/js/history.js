@@ -1,6 +1,7 @@
 /* static/js/history.js */
 
 let map = null;
+let currentItineraryId = null;
 
 /**
  * Toggles the visibility of the cultural guide RAG container panel.
@@ -41,6 +42,7 @@ function resetAndInitHistoryMap(lat, lon) {
  * @param {string|number} id - Target itinerary unique database record identifier.
  */
 async function loadRouteDetails(id) {
+    currentItineraryId = id;
     // Dynamic Active UI Sidebar Card Tracking State
     document.querySelectorAll('.route-card').forEach(c => c.classList.remove('active-card'));
     document.getElementById(`route-${id}`)?.classList.add('active-card');
@@ -241,5 +243,14 @@ async function deleteRoute(event, id) {
         }
     } catch (err) {
         console.error("Asynchronous deletion operation network crash: " + err);
+    }
+}
+
+// Redirects user to the dashboard page with the current itinerary ID for editing.
+function editCurrentPlanInDashboard() {
+    if (currentItineraryId) {
+        window.location.href = `/dashboard?itinerary_id=${currentItineraryId}`;
+    } else {
+        console.error("No itinerary is currently selected.");
     }
 }
