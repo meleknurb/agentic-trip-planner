@@ -92,8 +92,10 @@ class MapService:
         except Exception as e:
             raise RuntimeError(f"Geocoding service error: {str(e)}")
 
-    def fetch_live_pois(self, lat: float, lon: float, interests: List[str], radius_meters: int = 10000) -> List[POIModel]:
+    def fetch_live_pois(self, lat: float, lon: float, interests: List[str], dietary: str, radius_meters: int = 10000) -> List[POIModel]:
         """Fetch live points of interest (POIs) around the specified coordinates using Overpass QL."""
+        diet_filter = f'["diet:{dietary}"="yes"]' if dietary != "omnivore" else ""
+
         target_tags = []
         if interests:
             for interest in interests:
@@ -106,7 +108,9 @@ class MapService:
         # Dynamically construct the Overpass QL query
         node_queries = ""
         for key, val in target_tags:
-            node_queries += f'node["{key}"~"{val}"](around:{radius_meters},{lat},{lon});'
+            filter_string = diet_filter if key in ["amenity", "cuisine"] else ""
+            node_queries += f'node["{key}"~"{val}"]{filter_string}(around:{radius_meters},{lat},{lon});'
+            node_queries += f'way["{key}"~"{val}"]{filter_string}(around:{radius_meters},{lat},{lon});'
             
         overpass_query = f"""
         [out:json][timeout:60];
