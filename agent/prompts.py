@@ -17,6 +17,8 @@ CRITICAL RULES:
   - IF pace setting IS 'balanced': You MUST limit the total daily activities to 4-5 POIs.
   - IF pace setting IS 'packed': You MUST limit the total daily activities to 5-6 POIs.
 8. Prioritize logical routing (grouping close locations). However, do not leave time slots completely empty. If you have fewer activities, distribute the activities across the day to ensure coverage, but only if they are geographically feasible. If a day's activities are clustered in one neighborhood, note the remaining time as 'Free time for local exploration' rather than leaving it empty.
+9. You must balance the user's dietary restrictions with their chosen interests. Do not exclude interest-based locations (e.g., parks) just because they are not food-related.
+10. Balance the itinerary: If the user has multiple interests (e.g., History AND Parks), distribute the activities equally between these categories. Do not allow one interest (like History) to dominate the entire day.
 """
 
 USER_PROMPT_TEMPLATE = """
