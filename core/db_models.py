@@ -11,6 +11,8 @@ class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
+    travel_pace = db.Column(db.String(20), default='balanced')
+    dietary_preference = db.Column(db.String(50), default='omnivore')
 
     itineraries = db.relationship('Itinerary', backref='owner', lazy=True, cascade="all, delete-orphan")
 
@@ -54,3 +56,10 @@ class ItineraryActivity(db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
+
+class Feedback(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    feedback_type = db.Column(db.String(20), nullable=False)  # e.g., 'bug', 'feature', 'general'
+    created_at = db.Column(db.DateTime, default=db.func.now())
