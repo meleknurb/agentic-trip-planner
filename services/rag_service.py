@@ -73,7 +73,7 @@ class RAGService:
             print(f"Wikivoyage Content Fetch Error: {str(e)}")
             return ""
 
-    def retrieve_relevant_context(self, city_name: str, interests: List[str], chunk_size: int = 1200) -> str:
+    def retrieve_relevant_context(self, city_name: str, interests: List[str], pace: str, dietary: str, chunk_size: int = 1200) -> str:
         """
         Advanced RAG Pipeline Component: Fetches the corpus, applies smart chunking, 
         and scores chunks based on keyword overlap with user interests to deliver optimized context.
@@ -101,6 +101,7 @@ class RAGService:
         scored_chunks = []
         for chunk in chunks:
             score = 0
+            chunk_lower = chunk.lower()
             # Boost score based on keyword frequency match with user preferences
             for interest in interests:
                 # Direct match or sub-string match amplification
@@ -108,8 +109,32 @@ class RAGService:
                 score += len(matches) * 2.0
                 
                 # Secondary semantic markers (e.g., if interest is 'museum', also check for 'history', 'art')
-                if interest in ["museums", "history", "culture"] and any(kw in chunk.lower() for kw in ["museum", "ancient", "historic", "art", "gallery"]):
+                if interest in ["museums", "history", "culture"] and any(kw in chunk_lower for kw in ["museum", "ancient", "historic", "art", "gallery"]):
                     score += 1.0
+            
+            if pace == "relaxed":
+                if any(kw in chunk_lower for kw in ["relax", "quiet", "leisurely", "park", "garden", "stroll"]):
+                    score += 2.0
+            elif pace == "packed":
+                if any(kw in chunk_lower for kw in ["iconic", "must-see", "tourist", "busy", "main", "landmark"]):
+                    score += 2.0
+            elif pace == "balanced":
+                score += 0.0
+            
+            if dietary != "omnivore":
+                diet_map = {
+                    "lactose-intolerant": ["dairy-free", "lactose free", "no milk"],
+                    "gluten-free": ["gluten-free", "gluten free"],
+                    "vegan": ["vegan", "plant-based"],
+                    "vegetarian": ["vegetarian", "meat-free"],
+                    "halal": ["halal", "muslim-friendly"],
+                    "kosher": ["kosher", "jewish food"]
+                }
+                if dietary in diet_map:
+                    for keyword in diet_map[dietary]:
+                        if keyword in chunk_lower:
+                            score += 2.0
+                            break
 
             scored_chunks.append((score, chunk))
 
