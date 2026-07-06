@@ -6,8 +6,8 @@ from flask_wtf.csrf import CSRFProtect
 from flask_login import login_user, logout_user, current_user, login_required
 
 from core.config import Config
-from core.db_models import db, User, Itinerary, ItineraryDay, ItineraryActivity, login_manager
-from core.forms import RegisterForm, LoginForm
+from core.db_models import db, User, Itinerary, ItineraryDay, ItineraryActivity, Feedback, login_manager
+from core.forms import RegisterForm, LoginForm, UpdatePasswordForm
 
 from agent.gemini_agent import GeminiAgent
 from services.rag_service import RAGService
@@ -150,9 +150,13 @@ def generate_itinerary():
         }), 400
 
     try:
+        user_prefs = {
+            'pace': current_user.travel_pace,
+            'diet': current_user.dietary_preference
+        }
         # Geocoding & Live OpenStreetMap POI collection via MapService
         lat, lon = map_service.get_coordinates(city)
-        live_pois = map_service.fetch_live_pois(lat, lon, interests=detected_interests)
+        live_pois = map_service.fetch_live_pois(lat, lon, interests=detected_interests, dietary=user_prefs['diet'])
 
         if not live_pois:
             return jsonify({
@@ -163,7 +167,7 @@ def generate_itinerary():
         poi_lookup = {poi.poi_id: poi for poi in live_pois}
 
         # Context enrichment extracting local heuristics using the RAG index
-        rag_context = rag_service.retrieve_relevant_context(city_name=city, interests=detected_interests)
+        rag_context = rag_service.retrieve_relevant_context(city_name=city, interests=detected_interests, pace=user_prefs['pace'], dietary=user_prefs['diet'])
 
         # Prompt synthesis and Gemini model transaction targeting structured schema blueprints
         itinerary_data = agent.generate_itinerary(
@@ -171,7 +175,8 @@ def generate_itinerary():
             total_days=duration,
             live_pois=live_pois,
             rag_context=rag_context,
-            interests=detected_interests
+            interests=detected_interests,
+            user_preferences=user_prefs
         )
 
         #  Atomic database persistence ledger transactions
@@ -266,6 +271,11 @@ def regenerate_itinerary():
                 "message": "Itinerary not found."
             }), 404
 
+        user_prefs = {
+            'pace': current_user.travel_pace or 'balanced',
+            'diet': current_user.dietary_preference or 'omnivore'
+        }
+
         city = current_itinerary.city
         interests = (new_interests if new_interests else current_itinerary.interests)
         duration = (int(new_duration) if new_duration else current_itinerary.total_days)
@@ -284,7 +294,7 @@ def regenerate_itinerary():
 
 
         lat, lon = map_service.get_coordinates(city)
-        live_pois = map_service.fetch_live_pois(lat, lon, interests=interests)
+        live_pois = map_service.fetch_live_pois(lat, lon, interests=interests, dietary=user_prefs['diet'])
 
         if not live_pois:
             return jsonify({
@@ -294,7 +304,7 @@ def regenerate_itinerary():
 
         poi_lookup = {poi.poi_id: poi for poi in live_pois}
 
-        rag_context = rag_service.retrieve_relevant_context(city_name=city, interests=interests)
+        rag_context = rag_service.retrieve_relevant_context(city_name=city, interests=interests, pace=user_prefs['pace'], dietary=user_prefs['diet'])
 
         itinerary_data = agent.regenerate_itinerary(
             city_name=city,
@@ -303,7 +313,8 @@ def regenerate_itinerary():
             old_itinerary_text=old_itinerary_text,
             feedback=feedback,
             rag_context=rag_context,
-            interests=interests
+            interests=interests,
+            user_preferences=user_prefs
         )
 
         current_itinerary.days.clear()
@@ -420,6 +431,121 @@ def delete_itinerary(itinerary_id):
         db.session.rollback()
         return jsonify({"success": False, "message": f"Decommission workflow failed: {str(e)}"}), 500
 
+@app.route('/settings', methods=['GET'])
+@login_required
+def settings():
+    """Renders the settings workspace dynamically checking the URL parameters for focus states."""
+    password_form = UpdatePasswordForm()
+    active_tab = request.args.get('tab', 'profile')
+    
+    return render_template('settings.html', password_form=password_form, active_tab=active_tab)
+
+@app.route('/settings/profile', methods=['POST'])
+@login_required
+def settings_profile():
+    """Handles independent username updates and redirects strictly back to the profile tab."""
+    new_username = request.form.get('username', '').strip()
+    
+    if not new_username:
+        flash("Username cannot be empty.", "error")
+        return redirect(url_for('settings', tab='profile'))
+
+    existing_user = User.query.filter(User.username == new_username, User.id != current_user.id).first()
+    if existing_user:
+        flash("This username is already taken. Please choose another one.", "error")
+        return redirect(url_for('settings', tab='profile'))
+        
+    try:
+        db_user = db.session.get(User, current_user.id)
+        if db_user:
+            db_user.username = new_username
+            db.session.commit()
+            db.session.refresh(db_user)
+            flash("Username updated successfully!", "success")
+        else:
+            flash("User context not found in database.", "error")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"An error occurred: {str(e)}", "error")
+        
+    return redirect(url_for('settings', tab='profile'))
+
+@app.route('/settings/password', methods=['POST'])
+@login_required
+def settings_password():
+    """Handles isolated user credential updates and preserves focus on the security tab upon error."""
+    form = UpdatePasswordForm()
+
+    if form.validate_on_submit():
+        current_password = form.current_password.data
+        new_password = form.new_password.data
+        confirm_password = form.confirm_new_password.data
+        
+        if not current_user.check_password(current_password):
+            flash("Current password is incorrect.", "error")
+            return render_template('settings.html', password_form=form, active_tab='security')
+            
+        if new_password != confirm_password:
+            flash("New passwords do not match.", "error")
+            return render_template('settings.html', password_form=form, active_tab='security')
+            
+        try:
+            db_user = db.session.get(User, current_user.id)
+            if db_user:
+                db_user.set_password(new_password)
+                db.session.commit()
+                flash("Password updated successfully!", "success")
+                return redirect(url_for('settings', tab='security'))
+            else:
+                flash("User context not found in database.", "error")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"An error occurred: {str(e)}", "error")
+            return render_template('settings.html', password_form=form, active_tab='security')
+    else:
+        flash("Form validation failed. Please check your password fields.", "error")
+        return render_template('settings.html', password_form=form, active_tab='security')
+        
+    return redirect(url_for('settings', tab='security'))
+
+
+@app.route('/settings/ai-preferences', methods=['POST'])
+@login_required
+def settings_ai_preferences():
+    current_user.travel_pace = request.form.get('default_pace')
+    current_user.dietary_preference = request.form.get('dietary')
+    db.session.commit()
+    flash("Preferences saved!", "success")
+    return redirect(url_for('settings', tab='ai-preferences'))
+
+@app.route('/delete_account', methods=['GET'])
+@login_required
+def delete_account():
+    user = current_user._get_current_object()
+    logout_user()
+
+    db.session.delete(user)
+    db.session.commit()
+
+    return redirect(url_for('index'))
+
+@app.route('/submit_feedback', methods=['POST'])
+@login_required
+def submit_feedback():
+    message = request.form.get('message')
+    f_type = request.form.get('feedback_type')
+
+    if not message:
+        flash("Message cannot be empty.", "error")
+        return redirect(url_for('settings', tab='feedback'))
+    
+    new_feedback = Feedback(user_id=current_user.id, message=message, feedback_type=f_type)
+    
+    db.session.add(new_feedback)
+    db.session.commit()
+    
+    flash('Thank you for you feedback!', 'success')
+    return redirect(url_for('settings', tab='feedback'))
 
 if __name__ == "__main__":
     # with app.app_context():
