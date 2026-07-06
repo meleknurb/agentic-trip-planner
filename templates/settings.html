@@ -1,0 +1,189 @@
+<!-- templates/settings.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Odyssey</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+</head>
+<body>
+
+    {% include 'navbar.html' %}
+
+    <div class="settings-container" data-backend-tab="{{ active_tab }}">
+        
+        <aside class="settings-sidebar">
+            <div class="sidebar-header">
+                <h2>Account Settings</h2>
+                <p>Manage your preferences and security</p>
+            </div>
+            <nav class="settings-nav">
+                <button id="btn-profile" class="nav-tab active" onclick="switchTab('profile')">Profile Information</button>
+                <button id="btn-security" class="nav-tab" onclick="switchTab('security')">Security & Password</button>
+                <button id="btn-ai-preferences" class="nav-tab" onclick="switchTab('ai-preferences')">AI Travel Preferences</button>
+                <button id="btn-feedback" class="nav-tab" onclick="switchTab('feedback')">Feedback & Support</button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="nav-footer" onclick="window.location.href='{{ url_for('logout') }}';">Log Out</button>
+                <button class="nav-footer" onclick="confirmDelete()">Delete Account</button>
+            </div>
+        </aside>
+
+        <main class="settings-content">
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            
+            <section id="profile-tab" class="content-section active">
+                <h3>Profile Information</h3>
+                <p class="section-desc">Update your basic account details and identity.</p>
+                <form id="profile-form" method="POST" action="{{ url_for('settings_profile') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" value="{{ current_user.username }}" placeholder="Your username" required>
+                    </div>
+                    <button type="submit" class="save-btn">Update Username</button>
+                </form>
+            </section>
+
+            <section id="security-tab" class="content-section">
+                <h3>Security & Password</h3>
+                <p class="section-desc">Change your password to keep your account secure.</p>
+                <form id="security-form" method="POST" action="{{ url_for('settings_password') }}">
+                    {{ password_form.hidden_tag() }}
+                    
+                    <div class="form-group">
+                        <label for="current_password">Current Password</label>
+                        <input type="password" id="current_password" name="current_password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new_password">New Password</label>
+                        <input type="password" id="new_password" name="new_password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm_new_password">Confirm New Password</label>
+                        <input type="password" id="confirm_new_password" name="confirm_new_password" required>
+                    </div>
+                    <button type="submit" class="save-btn">Update Password</button>
+                </form>
+            </section>
+
+            <section id="ai-preferences-tab" class="content-section">
+                <h3>AI Travel Preferences</h3>
+                <p class="section-desc">These preferences directly guide the AI Agent when orchestrating your custom itineraries.</p>
+    
+                <form id="ai-preferences-form" method="POST" action="{{ url_for('settings_ai_preferences') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        
+                    <div class="form-group">
+                        <label>Default Travel Pace</label>
+
+                        {% set pace_options = {
+                            'relaxed': 'Slow & Relaxed (1-2 main POIs per day)',
+                            'balanced': 'Balanced (Standard discovery pace)',
+                            'packed': 'Fast-Paced (Packed with sights & activities)'
+                        } %}
+                        <div class="custom-select" data-target="default_pace">
+                            <div class="select-trigger">
+                                {{ pace_options.get(current_user.travel_pace, 'Balanced (Standard discovery pace)') }}
+                            </div>
+                            <div class="select-options">
+                                {% for key, value in pace_options.items() %}
+                                    <div class="select-option" data-value="{{ key }}">{{ value }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <input type="hidden" name="default_pace" value="{{ current_user.travel_pace }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Dietary Preferences</label>
+
+                        {% set dietary_options = {
+                            'omnivore': 'Omnivore (No restrictions)',
+                            'vegetarian': 'Vegetarian',
+                            'vegan': 'Vegan',
+                            'halal': 'Halal',
+                            'kosher': 'Kosher',
+                            'lactose-intolerant': 'Lactose Intolerant',
+                            'gluten-free': 'Gluten-Free'
+                        } %}
+                        <div class="custom-select" data-target="dietary">
+                            <div class="select-trigger">
+                                {{ dietary_options.get(current_user.dietary_preference, 'Omnivore (No restrictions)') }}
+                            </div>
+                            <div class="select-options">
+                                {% for key, value in dietary_options.items() %}
+                                    <div class="select-option" data-value="{{ key }}">{{ value }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <input type="hidden" name="dietary" value="{{ current_user.dietary_preference }}">
+                    </div>
+
+                    <button type="submit" class="save-btn">Save AI Preferences</button>
+                </form>
+            </section>
+            <section id="feedback-tab" class="content-section">
+                <h3>Help Us Improve</h3>
+                <p class="section-desc">Did you find a bug? Or have a feature suggestion? Let us know!</p>
+
+                <form id="feedback-form" method="POST" action="{{ url_for('submit_feedback') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        
+                    <div class="form-group">
+                        <label>Feedback Type</label>
+                        <div class="custom-select" data-target="feedback_type">
+                            <div class="select-trigger">Suggestion</div>
+                            <div class="select-options">
+                                <div class="select-option" data-value="suggestion">Suggestion</div>
+                                <div class="select-option" data-value="bug">Bug Report</div>
+                                <div class="select-option" data-value="performance">Performance/Speed</div>
+                                <div class="select-option" data-value="feature">New Feature Request</div>
+                                <div class="select-option" data-value="other">Other</div>
+                            </div>
+                        </div>
+                        <input type="hidden" name="feedback_type" value="suggestion">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="message">Your Message</label>
+                        <textarea name="message" id="message" rows="6" placeholder="Tell us what you think..." required class="feedback-textarea"></textarea>
+                    </div>
+
+                    <button type="submit" class="save-btn">Send Feedback</button>
+                </form>
+            </section>
+        </main>
+    </div>
+
+    <div id="deleteModal" class="modal">
+      <div class="modal-content">
+        <h3>Are you sure?</h3>
+        <p>This will permanently delete your account and all your itineraries. This action cannot be undone.</p>
+        <div class="modal-actions">
+          <button onclick="closeModal()" class="cancel-btn">Cancel</button>
+          <button onclick="window.location.href='{{ url_for('delete_account') }}';" class="confirm-btn">Delete Account</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+</body>
+</html>
