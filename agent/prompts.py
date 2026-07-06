@@ -10,11 +10,22 @@ CRITICAL RULES:
 4. Always prioritize travel realism and logical routing (grouping close locations together) over pure creativity.
 5. If iconic landmarks are available in the Live Map Points, prioritize them over minor monuments and niche museums.
 6. You MUST return the entire response strictly as a JSON object matching the requested schema. No markdown wrapping (like ```json) in your final response string.
+7. The user prefers a travel pace and follows a  diet.
+  - Use these preferences to guide the itinerary generation internally (e.g., restrict activity count for 'relaxed', prioritize relevant food spots for dietary needs).
+  - DO NOT explicitly summarize these preferences in the final output unless specifically requested or if you are providing a specific restaurant recommendation. Keep the itinerary focused on the locations and the experience.
+  - IF pace setting IS 'relaxed': You MUST limit the total daily activities to 2-3 POIs.
+  - IF pace setting IS 'balanced': You MUST limit the total daily activities to 4-5 POIs.
+  - IF pace setting IS 'packed': You MUST limit the total daily activities to 5-6 POIs.
+8. Prioritize logical routing (grouping close locations). However, do not leave time slots completely empty. If you have fewer activities, distribute the activities across the day to ensure coverage, but only if they are geographically feasible. If a day's activities are clustered in one neighborhood, note the remaining time as 'Free time for local exploration' rather than leaving it empty.
 """
 
 USER_PROMPT_TEMPLATE = """
 You are planning a {total_days}-day trip to {city_name}.
 The user is specifically interested in these activities/themes: {interests}.
+
+CRITICAL USER PREFERENCES:
+- The user prefers a {pace_setting} travel pace. Please adjust the number of activities and intensity accordingly.
+- The user follows a {diet_setting} diet. Ensure food/restaurant recommendations align with this restriction.
 
 You MUST follow these rules strictly:
 - Use ONLY POIs and coordinates from the Live Map Points section below.
@@ -84,6 +95,10 @@ You are refining an existing travel itinerary for a trip to {city_name} based on
 The revised trip duration is: {total_days} days.
 The original trip was: "{old_itinerary_text}".
 The user is specifically interested in these activities/themes: {interests}.
+
+CRITICAL USER PREFERENCES:
+- The user prefers a {pace_setting} travel pace. Ensure the revised itinerary maintains this pace intensity.
+- The user follows a {diet_setting} diet. Ensure any new food/restaurant recommendations continue to align with this restriction.
 
 CRITICAL USER FEEDBACK / REVISION REQUEST:
 "{feedback}"
