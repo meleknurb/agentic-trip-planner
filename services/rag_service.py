@@ -107,10 +107,6 @@ class RAGService:
                 # Direct match or sub-string match amplification
                 matches = re.findall(rf"\b{re.escape(interest)}\b", chunk, flags=re.I)
                 score += len(matches) * 2.0
-                
-                # Secondary semantic markers (e.g., if interest is 'museum', also check for 'history', 'art')
-                if interest in ["museums", "history", "culture"] and any(kw in chunk_lower for kw in ["museum", "ancient", "historic", "art", "gallery"]):
-                    score += 1.0
             
             if pace == "relaxed":
                 if any(kw in chunk_lower for kw in ["relax", "quiet", "leisurely", "park", "garden", "stroll"]):
