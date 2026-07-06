@@ -22,7 +22,7 @@ class GeminiAgent:
         self.client = genai.Client(api_key=api_key)
         self.model_name = "gemini-2.5-flash"
 
-    def generate_itinerary(self, city_name: str, total_days: int, live_pois: list[POIModel], rag_context: str, interests: list[str]) -> TripItineraryModel:
+    def generate_itinerary(self, city_name: str, total_days: int, live_pois: list[POIModel], rag_context: str, interests: list[str], user_preferences: dict) -> TripItineraryModel:
         """Converts map points and RAG contexts into a strict Pydantic-validated TripItineraryModel."""
         
         if not live_pois:
@@ -38,7 +38,9 @@ class GeminiAgent:
             city_name=city_name,
             interests=interests_str,
             map_points_json=map_points_json,
-            rag_context=rag_context.strip() if rag_context and rag_context.strip() else "No specific destination guide text available for this request. Please rely on your extensive internal knowledge base to fulfill the requirements."
+            rag_context=rag_context.strip() if rag_context and rag_context.strip() else "No specific destination guide text available for this request. Please rely on your extensive internal knowledge base to fulfill the requirements.",
+            pace_setting=user_preferences.get('pace', 'balanced'),
+            diet_setting=user_preferences.get('diet', 'omnivore')
         )
 
         try:
@@ -62,7 +64,7 @@ class GeminiAgent:
         except Exception as e:
             raise RuntimeError(f"Gemini Agent execution failed due to an unexpected error: {str(e)}")
 
-    def regenerate_itinerary(self, city_name: str, total_days: int, live_pois: list[POIModel], old_itinerary_text: str, feedback: str, rag_context: str, interests: list[str]) -> TripItineraryModel:
+    def regenerate_itinerary(self, city_name: str, total_days: int, live_pois: list[POIModel], old_itinerary_text: str, feedback: str, rag_context: str, interests: list[str], user_preferences: dict) -> TripItineraryModel:
         """Modifies and rebuilds an existing travel layout by forcing Gemini to ingest custom user feedback."""
         
         if not live_pois:
@@ -78,7 +80,9 @@ class GeminiAgent:
             feedback=feedback,
             map_points_json=map_points_json,
             rag_context=rag_context,
-            interests=interests
+            interests=interests,
+            pace_setting=user_preferences.get('pace', 'balanced'),
+            diet_setting=user_preferences.get('diet', 'omnivore')
         )
 
         try:
