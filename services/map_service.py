@@ -117,7 +117,7 @@ class MapService:
         (
             {node_queries}
         );
-        out center;
+        out center 30;
         """
 
         try:
