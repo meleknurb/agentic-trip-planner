@@ -550,4 +550,4 @@ def submit_feedback():
 if __name__ == "__main__":
     # with app.app_context():
     #    db.create_all()  # Ensure all database tables are created before the first request
-    app.run(debug=False)
+    app.run(debug=True)

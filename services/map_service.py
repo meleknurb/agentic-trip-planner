@@ -92,7 +92,7 @@ class MapService:
         except Exception as e:
             raise RuntimeError(f"Geocoding service error: {str(e)}")
 
-    def fetch_live_pois(self, lat: float, lon: float, interests: List[str], dietary: str, radius_meters: int = 5000) -> List[POIModel]:
+    def fetch_live_pois(self, lat: float, lon: float, interests: List[str], dietary: str, radius_meters: int = 10000) -> List[POIModel]:
         """Fetch live points of interest (POIs) around the specified coordinates using Overpass QL."""
         diet_filter = f'["diet:{dietary}"="yes"]' if dietary != "omnivore" else ""
 
@@ -117,7 +117,7 @@ class MapService:
         (
             {node_queries}
         );
-        out center 30;
+        out center;
         """
 
         try:
