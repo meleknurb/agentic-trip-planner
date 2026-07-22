@@ -80,7 +80,6 @@ class MapService:
             "limit": 1
         }
         try:
-            time.sleep(1)  # Add a delay to respect Nominatim's usage policy
             response = self.session.get(self.nominatim_url, params=params, headers=self.headers, timeout=10)
             response.raise_for_status()
             data = response.json()
@@ -93,24 +92,21 @@ class MapService:
             raise RuntimeError(f"Geocoding service error: {str(e)}")
 
     def fetch_live_pois(self, lat: float, lon: float, interests: List[str], dietary: str, radius_meters: int = 10000) -> List[POIModel]:
-        """Fetch live points of interest (POIs) around the specified coordinates using Overpass QL."""
-        diet_filter = f'["diet:{dietary}"="yes"]' if dietary != "omnivore" else ""
-
+        """Fetch live points of interest (POIs) around the specified coordinates, 
+        categorizing and balancing them across user interests to prevent bias."""
+        
         target_tags = []
-        if interests:
-            for interest in interests:
-                if interest in INTEREST_TO_TAGS:
-                    target_tags.extend(INTEREST_TO_TAGS[interest])
+        for interest in interests:
+            if interest in INTEREST_TO_TAGS:
+                target_tags.extend(INTEREST_TO_TAGS[interest])
         
         if not target_tags:
             target_tags = DEFAULT_TAGS
 
-        # Dynamically construct the Overpass QL query
         node_queries = ""
         for key, val in target_tags:
-            filter_string = diet_filter if key in ["amenity", "cuisine"] else ""
-            node_queries += f'node["{key}"~"{val}"]{filter_string}(around:{radius_meters},{lat},{lon});'
-            node_queries += f'way["{key}"~"{val}"]{filter_string}(around:{radius_meters},{lat},{lon});'
+            node_queries += f'node["{key}"~"{val}"](around:{radius_meters},{lat},{lon});'
+            node_queries += f'way["{key}"~"{val}"](around:{radius_meters},{lat},{lon});'
             
         overpass_query = f"""
         [out:json][timeout:60];
@@ -125,10 +121,11 @@ class MapService:
             response.raise_for_status()
             data = response.json()
             
-            pois = []
             elements = data.get("elements", [])
             
-            for index, elem in enumerate(elements):
+            categorized_pois = {interest: [] for interest in interests}
+            
+            for elem in elements:
                 poi_lat = elem.get("lat") or elem.get("center", {}).get("lat")
                 poi_lon = elem.get("lon") or elem.get("center", {}).get("lon")
                 
@@ -137,23 +134,67 @@ class MapService:
 
                 if not name or not poi_lat or not poi_lon:
                     continue
+                
+                if dietary != "omnivore":
+                    diet_tag = tags_dict.get(f"diet:{dietary}")
+                    if diet_tag == "no":
+                        continue
                     
                 category = "historical" if "historical" in tags_dict else tags_dict.get("tourism") or tags_dict.get("amenity") or "point_of_interest"
                 osm_id = f"{elem.get('type')}_{elem.get('id')}"
 
-                pois.append(POIModel(
+                poi_obj = POIModel(
                     poi_id=osm_id,
                     name=name,
                     category=category,
                     lat=float(poi_lat),
                     lon=float(poi_lon),
                     url=tags_dict.get("website", "")
-                ))
+                )
+
+                matched = False
+                for interest in interests:
+                    if interest in INTEREST_TO_TAGS:
+                        for tag_key, tag_val in INTEREST_TO_TAGS[interest]:
+                            if tag_key in tags_dict and any(v in tags_dict[tag_key] for v in tag_val.split("|")):
+                                categorized_pois[interest].append(poi_obj)
+                                matched = True
+                                break
                 
-                if len(pois) >= 30:
-                    break
-                    
-            return pois
+                if not matched and interests and interests[0] in categorized_pois:
+                    categorized_pois[interests[0]].append(poi_obj)
+
+            balanced_pois = []
+            max_per_interest = 8
+            
+            for interest, p_list in categorized_pois.items():
+                seen_ids = set()
+                unique_list = []
+                for p in p_list:
+                    if p.poi_id not in seen_ids:
+                        seen_ids.add(p.poi_id)
+                        unique_list.append(p)
+                
+                balanced_pois.extend(unique_list[:max_per_interest])
+
+            if not balanced_pois:
+                for elem in elements[:40]:
+                    poi_lat = elem.get("lat") or elem.get("center", {}).get("lat")
+                    poi_lon = elem.get("lon") or elem.get("center", {}).get("lon")
+                    tags_dict = elem.get("tags", {})
+                    name = tags_dict.get("name")
+                    if name and poi_lat and poi_lon:
+                        balanced_pois.append(POIModel(
+                            poi_id=f"{elem.get('type')}_{elem.get('id')}",
+                            name=name,
+                            category="point_of_interest",
+                            lat=float(poi_lat),
+                            lon=float(poi_lon),
+                            url=tags_dict.get("website", "")
+                        ))
+
+            return balanced_pois[:45]
+            
         except Exception as e:
             print(f"Overpass API Error: {str(e)}")
             return []
