@@ -110,10 +110,10 @@ class RAGService:
             
             if pace == "relaxed":
                 if any(kw in chunk_lower for kw in ["relax", "quiet", "leisurely", "park", "garden", "stroll"]):
-                    score += 2.0
+                    score += 1.0
             elif pace == "packed":
                 if any(kw in chunk_lower for kw in ["iconic", "must-see", "tourist", "busy", "main", "landmark"]):
-                    score += 2.0
+                    score += 1.0
             elif pace == "balanced":
                 score += 0.0
             
@@ -129,7 +129,7 @@ class RAGService:
                 if dietary in diet_map:
                     for keyword in diet_map[dietary]:
                         if keyword in chunk_lower:
-                            score += 2.0
+                            score += 1.0
                             break
 
             scored_chunks.append((score, chunk))
