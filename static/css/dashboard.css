@@ -615,3 +615,75 @@ body {
     background-color: #94a3b8;
     cursor: not-allowed;
 }
+
+/* FILTERING POIs BASED ON DAY SELECTION */
+.map-container-wrapper {
+    position: relative;
+    width: 100%;
+    margin-top: 12px;
+}
+
+.map-filter-control {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 1000;
+}
+
+.map-filter-control .custom-select {
+    position: relative;
+    width: 100%;
+    background: #f1f5f9;
+    border: 1px solid #94a3b8;
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(8px);
+}
+
+.map-filter-control .select-trigger {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    font-weight: 430;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 14px;
+    padding-right: 28px;
+}
+
+.map-filter-control .select-options {
+    position: absolute;
+    top: 110%;
+    right: 0;
+    left: auto;
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid #94a3b8;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: none;
+    z-index: 1001;
+    overflow: hidden;
+}
+
+.map-filter-control .custom-select.active .select-options {
+    display: block;
+}
+
+.map-filter-control .select-option {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    color: #1e293b;
+    transition: background 0.2s;
+}
+
+.map-filter-control .select-option:hover {
+    background-color: #f1f5f9;
+}
