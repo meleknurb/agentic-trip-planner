@@ -6,6 +6,7 @@ let map = null;
 let markersGroup = null;
 let currentLoadedItineraryId = null; // Track current id globally for iterative updates
 let currentItineraryData = null; // Cache the currently loaded itinerary data for filtering
+let polylineGroup = null; // Route polyline layer group for dynamic updates
 
 /**
  * Initializes or updates the interactive Leaflet map instance.
@@ -18,9 +19,11 @@ function initMap(lat = 40.1885, lon = 29.0610) {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
         markersGroup = L.layerGroup().addTo(map);
+        polylineGroup = L.layerGroup().addTo(map);
     } else {
         map.setView([lat, lon], 13);
         markersGroup.clearLayers();
+        polylineGroup.clearLayers();
     }
 }
 
@@ -410,17 +413,19 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /**
- * Filters map markers based on the selected day from the bottom-right dropdown.
+ * Filters the map markers and polylines based on the selected day value.
  */
 function filterMapByDay(dayVal) {
-    if (!markersGroup || !currentItineraryData) return;
+    if (!markersGroup || !polylineGroup || !currentItineraryData) return;
 
     markersGroup.clearLayers();
+    polylineGroup.clearLayers();
     let bounds = [];
 
     currentItineraryData.days.forEach(day => {
-        // If the selected day is "all" or matches the current day number, add its activities to the map
         if (dayVal === "all" || parseInt(dayVal) === day.day_number) {
+            let dayLatLngs = [];
+
             day.activities.forEach(act => {
                 const latVal = parseFloat(act.lat);
                 const lonVal = parseFloat(act.lon);
@@ -436,13 +441,22 @@ function filterMapByDay(dayVal) {
                      .addTo(markersGroup)
                      .bindPopup(popupText);
 
+                    dayLatLngs.push([latVal, lonVal]);
                     bounds.push([latVal, lonVal]);
                 }
             });
+
+            if (dayVal !== "all" && dayLatLngs.length > 1) {
+                L.polyline(dayLatLngs, {
+                    color: '#054882',      
+                    weight: 4,              
+                    opacity: 0.75,         
+                    dashArray: '6, 8' 
+                }).addTo(polylineGroup);
+            }
         }
     });
-
-    // Update map view to fit the filtered markers
+    
     if (bounds.length > 0 && map) {
         map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
     }
