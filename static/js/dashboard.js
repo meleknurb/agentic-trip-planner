@@ -5,6 +5,7 @@
 let map = null;
 let markersGroup = null;
 let currentLoadedItineraryId = null; // Track current id globally for iterative updates
+let currentItineraryData = null; // Cache the currently loaded itinerary data for filtering
 
 /**
  * Initializes or updates the interactive Leaflet map instance.
@@ -99,6 +100,7 @@ async function loadItineraryData(id) {
 
         if (res.success) {
             const data = res.data;
+            currentItineraryData = data;
             
             // Auto-populate sidebar form fields with fetched itinerary data to preserve UX state.
             const cityInput = document.getElementById("city");
@@ -138,11 +140,33 @@ async function loadItineraryData(id) {
             } else {
                 ragBox.innerText = "No additional cultural guide notes found for this destination.";
             }
+
+            const dayOptionsContainer = document.getElementById("mapDayOptions");
+            dayOptionsContainer.innerHTML = '<div class="select-option" data-value="all">All Days</div>';
+            
+            data.days.forEach(day => {
+                const optDiv = document.createElement("div");
+                optDiv.className = "select-option";
+                optDiv.setAttribute("data-value", day.day_number);
+                optDiv.innerText = `Day ${day.day_number}`;
+                dayOptionsContainer.appendChild(optDiv);
+            });
+
+            // Reset the map filter dropdown to "All Days" and update the hidden input value accordingly
+            const trigger = document.querySelector('.map-filter-control .select-trigger');
+            if (trigger) {
+                trigger.innerHTML = `<span class="filter-icon">📅</span> All Days`;
+            }
+            const hiddenInput = document.getElementById("mapDayValue");
+            if (hiddenInput) {
+                hiddenInput.value = "all";
+            }
             
             // Main Structural Document Header Mutations
             document.getElementById("planTitle").innerText = data.title;
             document.getElementById("planMeta").innerText = `Destination City: ${data.city} | Total Duration: ${data.total_days} Days`;
             document.getElementById("mapTitle").innerText = `${data.city} Route Map`;
+            document.getElementById("mapDayFilterContainer").classList.remove("hidden");
 
             // Dynamic Micro-Timeline Tree Parsing Loop
             const container = document.getElementById("daysContainer");
@@ -382,5 +406,78 @@ document.addEventListener("DOMContentLoaded", () => {
     
     if (itineraryId) {
         loadItineraryData(itineraryId);
+    }
+});
+
+/**
+ * Filters map markers based on the selected day from the bottom-right dropdown.
+ */
+function filterMapByDay(dayVal) {
+    if (!markersGroup || !currentItineraryData) return;
+
+    markersGroup.clearLayers();
+    let bounds = [];
+
+    currentItineraryData.days.forEach(day => {
+        // If the selected day is "all" or matches the current day number, add its activities to the map
+        if (dayVal === "all" || parseInt(dayVal) === day.day_number) {
+            day.activities.forEach(act => {
+                const latVal = parseFloat(act.lat);
+                const lonVal = parseFloat(act.lon);
+
+                if (!isNaN(latVal) && !isNaN(lonVal) && latVal !== 0 && lonVal !== 0) {
+                    const popupText = `
+                        <div class="map-popup-container">
+                            <strong style="color:#0f172a; font-size:0.85rem;">📍 ${act.name}</strong>
+                            <p style="color:#475569; font-size:0.75rem; margin:4px 0 0 0; line-height:1.4;">${act.why}</p>
+                        </div>
+                    `;
+                    L.marker([latVal, lonVal])
+                     .addTo(markersGroup)
+                     .bindPopup(popupText);
+
+                    bounds.push([latVal, lonVal]);
+                }
+            });
+        }
+    });
+
+    // Update map view to fit the filtered markers
+    if (bounds.length > 0 && map) {
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+    }
+}
+
+// --- CUSTOM SELECT DROPDOWN LOGIC FOR MAP FILTER ---
+document.addEventListener('click', function(e) {
+    const customSelect = document.querySelector('.map-filter-control .custom-select');
+    if (!customSelect) return;
+
+    if (customSelect.contains(e.target)) {
+        customSelect.classList.toggle('active');
+    } else {
+        customSelect.classList.remove('active');
+    }
+});
+
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('select-option') && e.target.closest('.map-filter-control')) {
+        const option = e.target;
+        const value = option.getAttribute('data-value');
+        const text = option.textContent;
+        
+        const customSelect = option.closest('.custom-select');
+        const trigger = customSelect.querySelector('.select-trigger');
+        if (trigger) {
+            trigger.innerHTML = `<span class="filter-icon">📅</span> ${text}`;
+        }
+        
+        const hiddenInput = document.getElementById('mapDayValue');
+        if (hiddenInput) {
+            hiddenInput.value = value;
+        }
+
+        // Invoke the map filtering function with the selected day value
+        filterMapByDay(value);
     }
 });
