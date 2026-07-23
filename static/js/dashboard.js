@@ -1,4 +1,4 @@
-// static/js/dashboard.js //
+// static/js/dashboard.js
 
 // GLOBAL STATE & CORE INSTANTIATION
 
@@ -176,7 +176,6 @@ async function loadItineraryData(id) {
             container.innerHTML = "";
 
             let firstLat = null, firstLon = null;
-            let bounds = [];
 
             data.days.forEach(day => {
                 const dayBox = document.createElement("div");
@@ -215,7 +214,6 @@ async function loadItineraryData(id) {
 
                             if (!isNaN(latVal) && !isNaN(lonVal) && latVal !== 0 && lonVal !== 0) {
                                 if (!firstLat) { firstLat = latVal; firstLon = lonVal; }
-                                bounds.push([latVal, lonVal]);
                             }
                         });
                     } else {
@@ -245,34 +243,7 @@ async function loadItineraryData(id) {
             // Interactive Geospatial Node Deployment
             initMap(firstLat || 40.1885, firstLon || 29.0610);
             
-            data.days.forEach(day => {
-                day.activities.forEach(act => {
-                    const latVal = parseFloat(act.lat);
-                    const lonVal = parseFloat(act.lon);
-
-                    if (!isNaN(latVal) && !isNaN(lonVal) && latVal !== 0 && lonVal !== 0) {
-                        const popupText = `
-                            <div class="map-popup-container">
-                                <strong style="color:#0f172a; font-size:0.85rem;">📍 ${act.name}</strong>
-                                <p style="color:#475569; font-size:0.75rem; margin:4px 0 0 0; line-height:1.4;">${act.why}</p>
-                            </div>
-                        `;
-                        L.marker([latVal, lonVal])
-                         .addTo(markersGroup)
-                         .bindPopup(popupText);
-                    }
-                });
-            });
-
-            // RECALIBRATE GEOSPATIAL VECTOR COMPASS: Prevents partial tile truncation artifacts.
-            setTimeout(() => {
-                if (map) {
-                    map.invalidateSize();
-                    if (bounds.length > 0) {
-                        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
-                    }
-                }
-            }, 100);
+            filterMapByDay("all");
 
         } else {
             renderFeedbackMessage("Failed to retrieve route details: " + res.message);
@@ -491,7 +462,6 @@ document.addEventListener('click', function(e) {
             hiddenInput.value = value;
         }
 
-        // Invoke the map filtering function with the selected day value
         filterMapByDay(value);
     }
 });
