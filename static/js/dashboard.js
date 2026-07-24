@@ -7,6 +7,7 @@ let markersGroup = null;
 let currentLoadedItineraryId = null; // Track current id globally for iterative updates
 let currentItineraryData = null; // Cache the currently loaded itinerary data for filtering
 let polylineGroup = null; // Route polyline layer group for dynamic updates
+let filterControlInstance = null; // Holds the active Leaflet control instance for the day filter to prevent duplicate additions
 
 /**
  * Initializes or updates the interactive Leaflet map instance.
@@ -242,7 +243,8 @@ async function loadItineraryData(id) {
 
             // Interactive Geospatial Node Deployment
             initMap(firstLat || 40.1885, firstLon || 29.0610);
-            
+
+            addMapFilterControl();
             filterMapByDay("all");
 
         } else {
@@ -465,3 +467,40 @@ document.addEventListener('click', function(e) {
         filterMapByDay(value);
     }
 });
+
+/**
+ * Adds the day filter dropdown into the Leaflet map's top-right corner
+ * using Leaflet's native Control API.
+ */
+function addMapFilterControl() {
+    if (!map) return;
+
+    if (filterControlInstance) {
+        map.removeControl(filterControlInstance);
+        filterControlInstance = null;
+    }
+
+    const FilterControl = L.Control.extend({
+        options: {
+            position: "topright"
+        },
+
+        onAdd: function () {
+            const container = document.getElementById("mapDayFilterContainer");
+
+            if (!container) {
+                return L.DomUtil.create("div");
+            }
+
+            container.classList.remove("hidden");
+
+            L.DomEvent.disableClickPropagation(container);
+            L.DomEvent.disableScrollPropagation(container);
+
+            return container;
+        }
+    });
+
+    filterControlInstance = new FilterControl();
+    map.addControl(filterControlInstance);
+}
