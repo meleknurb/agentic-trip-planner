@@ -2,6 +2,10 @@
 
 let map = null;
 let currentItineraryId = null;
+let currentItineraryData = null;
+let markersGroup = null;
+let polylineGroup = null;
+let filterControlInstance = null;
 
 /**
  * Toggles the visibility of the cultural guide RAG container panel.
@@ -18,23 +22,25 @@ function toggleRag() {
  * @param {number} lat - Latitude coordinates.
  * @param {number} lon - Longitude coordinates.
  */
+
 function resetAndInitHistoryMap(lat, lon) {
     const mapContainer = document.getElementById('historyMap');
     if (!mapContainer) return;
 
-    // Destruct current map instance to prevent operational context memory leaks
     if (map !== null && map !== undefined) {
         map.off(); 
         map.remove(); 
         map = null;
     }
 
-    // Initialize fresh map vector viewport
     map = L.map('historyMap').setView([lat, lon], 13);
     
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
+
+    markersGroup = L.layerGroup().addTo(map);
+    polylineGroup = L.layerGroup().addTo(map);
 }
 
 /**
@@ -61,6 +67,7 @@ async function loadRouteDetails(id) {
 
         if (res.success) {
             const data = res.data;
+            currentItineraryData = data;
 
             // Cultural Knowledge Guide Markdown Parsing (RAG Layer Integration)
             const ragBox = document.getElementById("historyRagBox");
@@ -68,6 +75,27 @@ async function loadRouteDetails(id) {
                 ragBox.innerHTML = marked.parse(data.rag_context);
             } else {
                 ragBox.innerText = "No additional cultural guide notes found for this destination.";
+            }
+
+            const dayOptionsContainer = document.getElementById("historyMapDayOptions");
+            dayOptionsContainer.innerHTML = '<div class="select-option" data-value="all">All Days</div>';
+            
+            data.days.forEach(day => {
+                const optDiv = document.createElement("div");
+                optDiv.className = "select-option";
+                optDiv.setAttribute("data-value", day.day_number);
+                optDiv.innerText = `Day ${day.day_number}`;
+                dayOptionsContainer.appendChild(optDiv);
+            });
+
+            // Reset the filter dropdown value to "All Days"
+            const trigger = document.querySelector('#historyMapDayFilterContainer .select-trigger');
+            if (trigger) {
+                trigger.innerHTML = `<span class="filter-icon">📅</span> All Days`;
+            }
+            const hiddenInput = document.getElementById("historyMapDayValue");
+            if (hiddenInput) {
+                hiddenInput.value = "all";
             }
 
             // Headings and Metadata Localization Updates
@@ -157,25 +185,11 @@ async function loadRouteDetails(id) {
             
             resetAndInitHistoryMap(centerLat, centerLon);
 
-            // Populate Dynamic Map Markers Pipeline
-            data.days.forEach(day => {
-                day.activities.forEach(act => {
-                    const latVal = parseFloat(act.lat);
-                    const lonVal = parseFloat(act.lon);
-                    
-                    if (!isNaN(latVal) && !isNaN(lonVal) && latVal !== 0 && lonVal !== 0) {
-                        const popupText = `
-                            <div style="font-family:'Inter', sans-serif;">
-                                <strong style="color:#0f172a;">📍 ${act.name}</strong>
-                                <p style="color:#475569; font-size:11px; margin:4px 0 0 0; line-height:1.4;">${act.why}</p>
-                            </div>
-                        `;
-                        L.marker([latVal, lonVal])
-                         .addTo(map)
-                         .bindPopup(popupText);
-                    }
-                });
-            });
+            // Add the day filter dropdown into the Leaflet map's top-right corner natively
+            addHistoryMapFilterControl();
+
+            // Initial render of all markers and polylines via the filter function
+            filterHistoryMapByDay("all");
 
             // Asynchronous Map Structural Reflow Invalidation Layout
             setTimeout(() => {
@@ -254,3 +268,124 @@ function editCurrentPlanInDashboard() {
         console.error("No itinerary is currently selected.");
     }
 }
+
+/**
+ * Adds the day filter dropdown into the Leaflet map's top-right corner
+ * using Leaflet's native Control API for history view.
+ */
+function addHistoryMapFilterControl() {
+    if (!map) return;
+
+    if (filterControlInstance) {
+        map.removeControl(filterControlInstance);
+        filterControlInstance = null;
+    }
+
+    const FilterControl = L.Control.extend({
+        options: {
+            position: "topright"
+        },
+
+        onAdd: function () {
+            const container = document.getElementById("historyMapDayFilterContainer");
+
+            if (!container) {
+                return L.DomUtil.create("div");
+            }
+
+            container.classList.remove("hidden");
+
+            L.DomEvent.disableClickPropagation(container);
+            L.DomEvent.disableScrollPropagation(container);
+
+            return container;
+        }
+    });
+
+    filterControlInstance = new FilterControl();
+    map.addControl(filterControlInstance);
+}
+
+/**
+ * Filters the map markers and polylines based on the selected day value for history view.
+ */
+function filterHistoryMapByDay(dayVal) {
+    if (!markersGroup || !polylineGroup || !currentItineraryData) return;
+
+    markersGroup.clearLayers();
+    polylineGroup.clearLayers();
+    let bounds = [];
+
+    currentItineraryData.days.forEach(day => {
+        if (dayVal === "all" || parseInt(dayVal, 10) === parseInt(day.day_number, 10)) {
+            let dayLatLngs = [];
+
+            day.activities.forEach(act => {
+                const latVal = parseFloat(act.lat);
+                const lonVal = parseFloat(act.lon);
+
+                if (!isNaN(latVal) && !isNaN(lonVal) && latVal !== 0 && lonVal !== 0) {
+                    const popupText = `
+                        <div style="font-family:'Inter', sans-serif;">
+                            <strong style="color:#0f172a; font-size:0.85rem;">📍 ${act.name}</strong>
+                            <p style="color:#475569; font-size:0.75rem; margin:4px 0 0 0; line-height:1.4;">${act.why}</p>
+                        </div>
+                    `;
+                    L.marker([latVal, lonVal])
+                     .addTo(markersGroup)
+                     .bindPopup(popupText);
+
+                    dayLatLngs.push([latVal, lonVal]);
+                    bounds.push([latVal, lonVal]);
+                }
+            });
+
+            if (dayVal !== "all" && dayLatLngs.length > 1) {
+                L.polyline(dayLatLngs, {
+                    color: '#054882',      
+                    weight: 4,              
+                    opacity: 0.75,         
+                    dashArray: '6, 8' 
+                }).addTo(polylineGroup);
+            }
+        }
+    });
+    
+    if (bounds.length > 0 && map) {
+        map.invalidateSize();
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+    }
+}
+
+// --- CUSTOM SELECT DROPDOWN LOGIC FOR HISTORY MAP FILTER ---
+document.addEventListener('click', function(e) {
+    const customSelect = document.querySelector('#historyMapDayFilterContainer .custom-select');
+    if (!customSelect) return;
+
+    if (customSelect.contains(e.target)) {
+        customSelect.classList.toggle('active');
+    } else {
+        customSelect.classList.remove('active');
+    }
+});
+
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('select-option') && e.target.closest('#historyMapDayFilterContainer')) {
+        const option = e.target;
+        const value = option.getAttribute('data-value');
+        const text = option.textContent;
+        
+        const customSelect = option.closest('.custom-select');
+        const trigger = customSelect.querySelector('.select-trigger');
+        if (trigger) {
+            trigger.innerHTML = `<span class="filter-icon">📅</span> ${text}`;
+        }
+        
+        const hiddenInput = document.getElementById('historyMapDayValue');
+        if (hiddenInput) {
+            hiddenInput.value = value;
+        }
+
+        filterHistoryMapByDay(value);
+    }
+});
