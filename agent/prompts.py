@@ -135,7 +135,7 @@ The user has provided the following feedback for revision: "{feedback}".
 CRITICAL FORMATTING RULE FOR "rag_context":
 - Based on the user's feedback revise the "rag_context" to be a concise, skimmable, and structured English Markdown summary.
 - Do NOT dump raw encyclopedia text or long paragraphs about highways. 
-- Structure the "rag_context" beautifully using clean English Markdown, attractive header emojis, and short, skimmable bullet points (just like a professional travel guide notebook).
+- Structure the "rag_context" beautifully using clean English Markdown, attractive header emojis, and short, skimmable bullet points (just like a professional travel guide notebook) based on user interests.
 - If the guide data is empty or missing, use your own internal knowledge base to write this English Markdown guide.
 ---
 
@@ -187,6 +187,86 @@ Return the revised and corrected structured itinerary matching this exact JSON s
           "lon": 0.0
         }}
       ]
+    }}
+  ]
+}}
+"""
+
+SINGLE_DAY_REGENERATE_TEMPLATE = """
+You are refining ONLY Day {target_day_number} of an existing {total_days}-day travel itinerary for a trip to {city_name} based on user feedback.
+
+### ORIGINAL ITINERARY CONTEXT
+- Target Day to Modify: Day {target_day_number}
+- Old Content of Day {target_day_number}: "{old_day_text}"
+- User Feedback: "{feedback}"
+- Trip Interests: {interests}
+- ALL OTHER DAYS (DO NOT REPEAT POIs FROM THESE DAYS): {other_days_activities}
+
+### CRITICAL USER PREFERENCES
+- The user prefers a {pace_setting} travel pace. Maintain this pacing in the regenerated day.
+- The user follows a {diet_setting} diet. Any restaurant or food recommendations should respect this dietary preference while remaining natural and destination-appropriate.
+
+---
+
+### CRITICAL RULES FOR SINGLE-DAY REGENERATION
+
+1. MODIFY ONLY Day {target_day_number}.
+2. Keep ALL OTHER DAYS completely unchanged.
+3. Respect the user's feedback while staying consistent with the overall trip theme and interests.
+4. Use ONLY POIs from the Live Map Points section below. Never invent places.
+5. Do NOT reuse POIs that already appear in the other days whenever reasonable.
+6. Fill every time slot (morning, afternoon, evening). Do not leave any slot empty.
+7. Return the COMPLETE {total_days}-day itinerary, even though only one day has changed.
+
+---
+
+### IMPORTANT RULE FOR rag_context
+
+The provided `rag_context` is reference material only.
+
+- Use it to better understand the destination.
+- Use it to improve the quality and consistency of the regenerated day.
+- DO NOT rewrite, expand, summarize, or modify the `rag_context`.
+- Return the SAME `rag_context` exactly as provided.
+
+---
+
+### KNOWLEDGE BASE CONTEXT (RAG)
+
+{rag_context}
+
+---
+
+### LIVE MAP POINTS
+
+{map_points_json}
+
+---
+
+### RESPONSE FORMAT
+
+Return the complete structured itinerary matching this exact JSON schema:
+
+{{
+  "title": "The trip title",
+  "city": "{city_name}",
+  "total_days": {total_days},
+  "rag_context": "Return the original rag_context unchanged.",
+  "days": [
+    {{
+      "day": 1,
+      "notes": "General tips for this day",
+      "morning": [
+        {{
+          "poi_id": "...",
+          "name": "...",
+          "why": "...",
+          "lat": 0.0,
+          "lon": 0.0
+        }}
+      ],
+      "afternoon": [...],
+      "evening": [...]
     }}
   ]
 }}
