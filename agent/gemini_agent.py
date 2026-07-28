@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from core.config import Config
 from core.schemas import TripItineraryModel, POIModel
-from agent.prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, REGENERATE_PROMPT_TEMPLATE
+from agent.prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, REGENERATE_PROMPT_TEMPLATE, SINGLE_DAY_REGENERATE_TEMPLATE
 
 
 class GeminiAgent:
@@ -105,3 +105,46 @@ class GeminiAgent:
             raise RuntimeError(f"Gemini output structural validation failed during regeneration: {str(ve)}")
         except Exception as e:
             raise RuntimeError(f"Gemini Agent regeneration pipeline failed: {str(e)}")
+
+    def regenerate_single_day(self, city_name: str, target_day_number: int, total_days: int, live_pois: list[POIModel], old_day_text: str, feedback: str, rag_context: str, interests: list[str], user_preferences: dict, other_days_summary:str) -> TripItineraryModel:
+        """Modifies and rebuilds ONLY a specific day of an existing travel itinerary based on user feedback."""
+        
+        if not live_pois:
+            raise ValueError("Cannot regenerate a day without live map points.")
+
+        map_points_data = [poi.model_dump() for poi in live_pois]
+        map_points_json = json.dumps(map_points_data, ensure_ascii=False, indent=2)
+
+        user_content = SINGLE_DAY_REGENERATE_TEMPLATE.format(
+            city_name=city_name,
+            target_day_number=target_day_number,
+            total_days=total_days,
+            old_day_text=old_day_text,
+            feedback=feedback,
+            map_points_json=map_points_json,
+            rag_context=rag_context,
+            interests=", ".join(interests) if interests else "General Sightseeing",
+            pace_setting=user_preferences.get('pace', 'balanced'),
+            diet_setting=user_preferences.get('diet', 'omnivore'),
+            other_days_activities=other_days_summary
+        )
+
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=user_content,
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    temperature=0.4,
+                    response_mime_type="application/json",
+                    response_schema=TripItineraryModel, 
+                ),
+            )
+            return TripItineraryModel.model_validate_json(response.text)
+
+        except APIError as ae:
+            raise RuntimeError(f"Gemini API Error during single day regeneration: {ae.message} (Status Code: {ae.code})")
+        except ValidationError as ve:
+            raise RuntimeError(f"Gemini output structural validation failed during single day regeneration: {str(ve)}")
+        except Exception as e:
+            raise RuntimeError(f"Gemini Agent single day regeneration pipeline failed: {str(e)}")
