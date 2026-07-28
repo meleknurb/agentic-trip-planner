@@ -92,20 +92,10 @@
                 <div class="map-wrapper">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
                         <h3 id="mapTitle" style="margin: 0;">Route Map View</h3>
-
-                        <div id="historyMapDayFilterContainer" class="map-filter-control hidden">
-                            <div class="custom-select" data-target="historyMapDayValue">
-                                <div class="select-trigger">
-                                    <span class="filter-icon">📅</span> All Days
-                                </div>
-                                <div class="select-options" id="historyMapDayOptions">
-                                    <div class="select-option" data-value="all">All Days</div>
-                                </div>
-                            </div>
-                            <input type="hidden" id="historyMapDayValue" value="all">
-                        </div>
                     </div>
-                    <div id="historyMap"></div>
+                    <div class="map-container-wrapper">
+                        <div id="historyMap"></div>
+                    </div>
                 </div>
 
                 <!-- Cultural Guide Knowledge base (RAG Integration Layer) -->
