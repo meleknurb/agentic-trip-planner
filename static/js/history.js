@@ -75,7 +75,7 @@ function editCurrentPlanInDashboard() {
 
 /**
  * Adds the day filter dropdown into the Leaflet map's top-right corner
- * using Leaflet's native Control API for history view.
+ * using Leaflet's native Control API for history view, dynamically populating options.
  */
 function addHistoryMapFilterControl() {
     if (!map) return;
@@ -91,13 +91,32 @@ function addHistoryMapFilterControl() {
         },
 
         onAdd: function () {
-            const container = document.getElementById("historyMapDayFilterContainer");
+            const container = L.DomUtil.create("div", "map-filter-control");
+            container.id = "historyMapDayFilterContainer";
 
-            if (!container) {
-                return L.DomUtil.create("div");
+            container.innerHTML = `
+                <div class="custom-select" data-target="historyMapDayValue">
+                    <div class="select-trigger">
+                        <span class="filter-icon">📅</span> All Days
+                    </div>
+                    <div class="select-options" id="historyMapDayOptions">
+                        <div class="select-option" data-value="all">All Days</div>
+                    </div>
+                </div>
+                <input type="hidden" id="historyMapDayValue" value="all">
+            `;
+
+            const optionsContainer = container.querySelector("#historyMapDayOptions");
+
+            if (currentItineraryData && currentItineraryData.days) {
+                currentItineraryData.days.forEach(day => {
+                    const optDiv = document.createElement("div");
+                    optDiv.className = "select-option";
+                    optDiv.setAttribute("data-value", day.day_number);
+                    optDiv.textContent = `Day ${day.day_number}`;
+                    optionsContainer.appendChild(optDiv);
+                });
             }
-
-            container.classList.remove("hidden");
 
             L.DomEvent.disableClickPropagation(container);
             L.DomEvent.disableScrollPropagation(container);
@@ -169,7 +188,6 @@ function filterHistoryMapByDay(dayVal) {
  */
 async function loadRouteDetails(id) {
     currentItineraryId = id;
-    // Dynamic Active UI Sidebar Card Tracking State
     document.querySelectorAll('.route-card').forEach(c => c.classList.remove('active-card'));
     document.getElementById(`route-${id}`)?.classList.add('active-card');
 
@@ -200,27 +218,6 @@ async function loadRouteDetails(id) {
                 ragBox.innerHTML = marked.parse(data.rag_context);
             } else {
                 ragBox.innerText = "No additional cultural guide notes found for this destination.";
-            }
-
-            const dayOptionsContainer = document.getElementById("historyMapDayOptions");
-            dayOptionsContainer.innerHTML = '<div class="select-option" data-value="all">All Days</div>';
-            
-            data.days.forEach(day => {
-                const optDiv = document.createElement("div");
-                optDiv.className = "select-option";
-                optDiv.setAttribute("data-value", day.day_number);
-                optDiv.innerText = `Day ${day.day_number}`;
-                dayOptionsContainer.appendChild(optDiv);
-            });
-
-            // Reset the filter dropdown value to "All Days"
-            const trigger = document.querySelector('#historyMapDayFilterContainer .select-trigger');
-            if (trigger) {
-                trigger.innerHTML = `<span class="filter-icon">📅</span> All Days`;
-            }
-            const hiddenInput = document.getElementById("historyMapDayValue");
-            if (hiddenInput) {
-                hiddenInput.value = "all";
             }
 
             // Headings and Metadata Localization Updates
@@ -267,7 +264,6 @@ async function loadRouteDetails(id) {
                                 </div>
                             `;
                             
-                            // Parse standard schema location coordinates safely
                             const latVal = parseFloat(act.lat);
                             const lonVal = parseFloat(act.lon);
 
@@ -299,23 +295,16 @@ async function loadRouteDetails(id) {
                 container.appendChild(dayBox);
             });
 
-            // Toggle operational loader view overlays to viewable workspaces
             loadingState.classList.add("hidden");
             detailContent.classList.remove("hidden");
 
-            // Geospatial Cluster Center Fallback Engine 
             const centerLat = firstLat || 39.9207; 
             const centerLon = firstLon || 32.8541;
             
             resetAndInitHistoryMap(centerLat, centerLon);
-
-            // Add the day filter dropdown into the Leaflet map's top-right corner natively
             addHistoryMapFilterControl();
-
-            // Initial render of all markers and polylines via the filter function
             filterHistoryMapByDay("all");
 
-            // Asynchronous Map Structural Reflow Invalidation Layout
             setTimeout(() => {
                 if (map) {
                     map.invalidateSize();
@@ -343,10 +332,8 @@ async function loadRouteDetails(id) {
  * @param {string|number} id - Targeted itinerary identifier record node.
  */
 async function deleteRoute(event, id) {
-    // Block event bubbling pipeline to prevent triggering loadRouteDetails background execution
     event.stopPropagation();
     
-    // Retrieve Application CSRF token securely straight from DOM Meta Layout Structure
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
     try {
@@ -357,11 +344,9 @@ async function deleteRoute(event, id) {
         const result = await response.json();
         
         if (result.success) {
-            // Smoothly eradicate components instantly without interruption dialogs
             document.getElementById(`route-${id}`).remove();
             resetToEmptyState();
             
-            // Hard reload system layout matrix only if total stored archives count hits zero
             if (document.querySelectorAll('.route-card').length === 0) {
                 location.reload();
             }
@@ -375,7 +360,6 @@ async function deleteRoute(event, id) {
 
 // 6. EVENT LISTENERS & LIFECYCLE HOOKS
 
-// --- CUSTOM SELECT DROPDOWN LOGIC FOR HISTORY MAP FILTER ---
 document.addEventListener('click', function(e) {
     const customSelect = document.querySelector('#historyMapDayFilterContainer .custom-select');
     if (!customSelect) return;
