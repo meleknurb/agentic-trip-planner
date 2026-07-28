@@ -376,6 +376,156 @@ def regenerate_itinerary():
             "message": str(e)
         }), 500
 
+@app.route("/regenerate_single_day", methods=["POST"])
+@login_required
+def regenerate_single_day():
+    """Regenerates only one day of an itinerary while preserving the rest of the trip."""
+
+    data = request.get_json() or {}
+
+    itinerary_id = data.get("itinerary_id")
+    day_number = data.get("day_number")
+    feedback = (data.get("feedback") or "").strip()
+
+    if not itinerary_id or not day_number:
+        return jsonify({
+            "success": False,
+            "message": "Itinerary id and day number are required."
+        }), 400
+
+    if not feedback:
+        return jsonify({
+            "success": False,
+            "message": "Feedback cannot be empty."
+        }), 400
+
+    try:
+        current_itinerary = Itinerary.query.filter_by(id=itinerary_id,user_id=current_user.id).first()
+
+        if not current_itinerary:
+            return jsonify({
+                "success": False,
+                "message": "Itinerary not found."
+            }), 404
+
+        target_day_obj = ItineraryDay.query.filter_by(itinerary_id=current_itinerary.id,day_number=day_number).first()
+
+        if not target_day_obj:
+            return jsonify({
+                "success": False,
+                "message": "Specified day not found in this itinerary."
+            }), 404
+
+        # User preferences
+        user_prefs = {
+            "pace": current_user.travel_pace or "balanced",
+            "diet": current_user.dietary_preference or "omnivore"
+        }
+
+        city = current_itinerary.city
+        interests = current_itinerary.interests
+        total_days = current_itinerary.total_days
+
+        # Build current day's text
+        old_day_lines = [f"Day {day_number} (Notes: {target_day_obj.notes})"]
+
+        for act in target_day_obj.activities:
+            old_day_lines.append(f"- {act.slot}: {act.name} ({act.category}) - Why: {act.why}")
+
+        old_day_text = "\n".join(old_day_lines)
+
+        # Build summary of other days to avoid duplicates
+        other_days_activities = []
+
+        for day in current_itinerary.days:
+            if int(day.day_number) != int(day_number):
+                for act in day.activities:
+                    other_days_activities.append(act.name)
+
+        other_days_summary = (", ".join(other_days_activities) if other_days_activities else "None")
+
+        # Fetch POIs using ORIGINAL itinerary interests
+        lat, lon = map_service.get_coordinates(city)
+        live_pois = map_service.fetch_live_pois(lat,lon,interests=interests,dietary=user_prefs["diet"])
+
+        if not live_pois:
+            return jsonify({
+                "success": False,
+                "message": f"No POIs found for {city}."
+            }), 404
+
+        poi_lookup = {poi.poi_id: poi for poi in live_pois}
+
+        # Preserve existing RAG context
+        rag_context = current_itinerary.rag_context
+
+        itinerary_data = agent.regenerate_single_day(
+            city_name=city,
+            target_day_number=int(day_number),
+            total_days=total_days,
+            live_pois=live_pois,
+            old_day_text=old_day_text,
+            feedback=feedback,
+            rag_context=rag_context,
+            interests=interests,
+            user_preferences=user_prefs,
+            other_days_summary=other_days_summary
+        )
+
+        # Replace ONLY the selected day
+        for day_plan in itinerary_data.days:
+
+            if int(day_plan.day) != int(day_number):
+                continue
+
+            ItineraryActivity.query.filter_by(day_id=target_day_obj.id).delete()
+
+            target_day_obj.notes = day_plan.notes
+
+            db.session.flush()
+
+            slots = {
+                "morning": day_plan.morning,
+                "afternoon": day_plan.afternoon,
+                "evening": day_plan.evening
+            }
+
+            for slot_name, activities in slots.items():
+                for block in activities:
+
+                    poi = poi_lookup.get(block.poi_id)
+
+                    activity = ItineraryActivity(
+                        day_id=target_day_obj.id,
+                        slot=slot_name,
+                        poi_id=block.poi_id,
+                        name=poi.name if poi else "Unknown Destination",
+                        category=poi.category if poi else "General",
+                        why=block.why,
+                        latitude=poi.lat if poi else None,
+                        longitude=poi.lon if poi else None
+                    )
+
+                    db.session.add(activity)
+
+            break
+
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": f"Day {day_number} regenerated successfully.",
+            "itinerary_id": current_itinerary.id
+        })
+
+    except Exception as e:
+        db.session.rollback()
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
+
 @app.route("/get_itinerary/<int:itinerary_id>")
 @login_required
 def get_itinerary(itinerary_id):
