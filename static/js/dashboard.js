@@ -327,8 +327,17 @@ async function loadItineraryData(id) {
                         acts.forEach(act => {
                             dayHTML += `
                                 <div class="activity-item">
-                                    <p class="act-name">📍 ${act.name}</p>
+
+                                    <div class="activity-header">
+                                        <p class="act-name">📍 ${act.name}</p>
+                                    </div>
+
                                     <p class="act-why">💡 ${act.why}</p>
+
+                                    <div class="poi-feedback-buttons">
+                                        <button class="feedback-btn upvote-btn" onclick="submitPoiFeedback('${data.city}','${act.poi_id}','up',this)">👍</button>
+                                        <button class="feedback-btn downvote-btn" onclick="submitPoiFeedback('${data.city}','${act.poi_id}','down',this)">👎</button>
+                                    </div>
                                 </div>
                             `;
                             
@@ -504,6 +513,48 @@ async function submitSingleDayRegeneration(dayNumber) {
         renderFeedbackMessage("A network failure occurred during single-day update: " + err);
         document.getElementById("loadingState").classList.add("hidden");
         document.getElementById("itineraryContent").classList.remove("hidden");
+    }
+}
+
+/**
+ * Sends user feedback vote (up/down) for a specific Point of Interest.
+ */
+
+async function submitPoiFeedback(city, poiId, voteType, buttonElement) {
+    const csrfTokenElement = document.querySelector('input[name="csrf_token"]');
+    const token = csrfTokenElement ? csrfTokenElement.value : "";
+
+    try {
+        const response = await fetch("/submit_poi_feedback", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": token
+            },
+            body: JSON.stringify({
+                city: city,
+                poi_id: poiId,
+                vote: voteType
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            if (buttonElement) {
+                buttonElement.style.transform = "scale(1.3)";
+                buttonElement.style.opacity = "1";
+                setTimeout(() => {
+                    buttonElement.style.transform = "scale(1)";
+                }, 200);
+            }
+        } else {
+            alert(result.message);
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert("Unable to save feedback.");
     }
 }
 
