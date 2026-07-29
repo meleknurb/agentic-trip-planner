@@ -1,6 +1,8 @@
 # app.py
 
 import os
+import json
+import time
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_wtf.csrf import CSRFProtect
 from flask_login import login_user, logout_user, current_user, login_required
@@ -552,6 +554,7 @@ def get_itinerary(itinerary_id):
         for act in day.activities:
             day_data["activities"].append({
                 "slot": act.slot,
+                "poi_id": act.poi_id,
                 "name": act.name,
                 "category": act.category,
                 "why": act.why,
@@ -561,6 +564,51 @@ def get_itinerary(itinerary_id):
         result["days"].append(day_data)
 
     return jsonify({"success": True, "data": result})
+
+@app.route("/submit_poi_feedback", methods=["POST"])
+@login_required
+def submit_poi_feedback():
+
+    data = request.get_json() or {}
+
+    city = data.get("city")
+    poi_id = data.get("poi_id")
+    vote = data.get("vote")
+
+    if not city or not poi_id or vote not in ["up", "down"]:
+        return jsonify({
+            "success": False,
+            "message": "Invalid feedback."
+        }), 400
+
+    try:
+
+        feedback_event = {
+            "ts": time.time(),
+            "city_key": city.lower().strip(),
+            "poi_id": poi_id,
+            "vote": vote
+        }
+
+        feedback_path = os.path.join("feedback", "poi_feedback.jsonl")
+
+        os.makedirs("feedback", exist_ok=True)
+
+        with open(feedback_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(feedback_event))
+            f.write("\n")
+
+        return jsonify({
+            "success": True,
+            "message": "Feedback saved."
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
 
 @app.route('/delete_itinerary/<int:itinerary_id>', methods=['DELETE'])
 @login_required
