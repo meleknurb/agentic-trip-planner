@@ -748,3 +748,28 @@ body {
 .day-timeline-card .day-tips-box {
     margin-top: 15px;
 }
+
+/* Feedback Buttons Styles */
+.poi-feedback-buttons{
+    display:flex;
+    justify-content: flex-end;
+    gap:6px;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed #e2e8f0;
+}
+
+.feedback-btn{
+    border:none;
+    outline:none;
+    box-shadow:none;
+}
+
+.feedback-btn:hover{
+    transform:scale(1.2);
+}
+
+.upvote-btn,
+.downvote-btn{
+    background:transparent;
+}
