@@ -50,7 +50,7 @@ def test_fetch_live_pois_strict_schema_validation(mock_post, map_service):
     mock_response.json.return_value = mock_overpass_data
     mock_post.return_value = mock_response
 
-    pois = map_service.fetch_live_pois(lat=41.0, lon=29.0, interests=["coffee"])
+    pois = map_service.fetch_live_pois(lat=41.0, lon=29.0, interests=["coffee"],dietary="omnivore")
 
     assert isinstance(pois, list)
     assert len(pois) == 1
@@ -66,6 +66,53 @@ def test_map_service_retry_on_server_failure(mock_post, map_service):
     mock_response.raise_for_status.side_effect = Exception("504 Gateway Timeout")
     mock_post.return_value = mock_response
     
-    pois = map_service.fetch_live_pois(lat=41.0, lon=29.0, interests=["coffee"])
+    pois = map_service.fetch_live_pois(lat=41.0, lon=29.0, interests=["coffee"],dietary="omnivore")
     
     assert pois == []
+
+# 4. BOOST SCORES SORTING TEST
+@patch('requests.Session.post')
+def test_fetch_live_pois_boost_sorting(mock_post, map_service):
+    """Verify that POIs are correctly sorted and prioritized based on feedback boost scores."""
+    mock_overpass_data = {
+        "elements": [
+            {
+                "type": "node",
+                "id": 1,
+                "lat": 41.0,
+                "lon": 29.0,
+                "tags": {"name": "Low Score Cafe", "amenity": "cafe"}
+            },
+            {
+                "type": "node",
+                "id": 2,
+                "lat": 41.0,
+                "lon": 29.0,
+                "tags": {"name": "High Score Cafe", "amenity": "cafe"}
+            }
+        ]
+    }
+    
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = mock_overpass_data
+    mock_post.return_value = mock_response
+
+    boost_scores = {
+        "node_1": -1.0,
+        "node_2": 2.0
+    }
+
+    pois = map_service.fetch_live_pois(
+        lat=41.0, 
+        lon=29.0, 
+        interests=["coffee"], 
+        dietary="omnivore", 
+        boost_scores=boost_scores
+    )
+
+    assert isinstance(pois, list)
+    assert len(pois) == 2
+  
+    assert pois[0].name == "High Score Cafe"
+    assert pois[1].name == "Low Score Cafe"
