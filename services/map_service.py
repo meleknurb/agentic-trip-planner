@@ -91,9 +91,12 @@ class MapService:
         except Exception as e:
             raise RuntimeError(f"Geocoding service error: {str(e)}")
 
-    def fetch_live_pois(self, lat: float, lon: float, interests: List[str], dietary: str, radius_meters: int = 10000) -> List[POIModel]:
+    def fetch_live_pois(self, lat: float, lon: float, interests: List[str], dietary: str, boost_scores: Dict[str, float] | None = None, radius_meters: int = 10000) -> List[POIModel]:
         """Fetch live points of interest (POIs) around the specified coordinates, 
         categorizing and balancing them across user interests to prevent bias."""
+
+        if boost_scores is None:
+            boost_scores = {}
         
         target_tags = []
         for interest in interests:
@@ -167,10 +170,11 @@ class MapService:
             balanced_pois = []
             max_per_interest = 8
             
-            for interest, p_list in categorized_pois.items():
+            for interest, poi_list in categorized_pois.items():
+                poi_list.sort(key=lambda poi: boost_scores.get(poi.poi_id, 0),reverse=True)
                 seen_ids = set()
                 unique_list = []
-                for p in p_list:
+                for p in poi_list:
                     if p.poi_id not in seen_ids:
                         seen_ids.add(p.poi_id)
                         unique_list.append(p)
