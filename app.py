@@ -14,6 +14,7 @@ from core.forms import RegisterForm, LoginForm, UpdatePasswordForm
 from agent.gemini_agent import GeminiAgent
 from services.rag_service import RAGService
 from services.map_service import MapService
+from services.feedback_service import FeedbackService
 
 # Initialize the Flask core application infrastructure
 app = Flask(
@@ -35,6 +36,7 @@ csrf = CSRFProtect(app)
 agent = GeminiAgent()
 rag_service = RAGService()
 map_service = MapService()
+feedback_service = FeedbackService()
 
 
 @app.route("/")
@@ -156,9 +158,12 @@ def generate_itinerary():
             'pace': current_user.travel_pace,
             'diet': current_user.dietary_preference
         }
+
+        boost_scores = feedback_service.calculate_boost_scores(city.lower().strip())
+
         # Geocoding & Live OpenStreetMap POI collection via MapService
         lat, lon = map_service.get_coordinates(city)
-        live_pois = map_service.fetch_live_pois(lat, lon, interests=detected_interests, dietary=user_prefs['diet'])
+        live_pois = map_service.fetch_live_pois(lat, lon, interests=detected_interests, dietary=user_prefs['diet'],boost_scores=boost_scores)
 
         if not live_pois:
             return jsonify({
@@ -294,9 +299,10 @@ def regenerate_itinerary():
 
         old_itinerary_text = "\n".join(lines)
 
+        boost_scores = feedback_service.calculate_boost_scores(city.lower().strip())
 
         lat, lon = map_service.get_coordinates(city)
-        live_pois = map_service.fetch_live_pois(lat, lon, interests=interests, dietary=user_prefs['diet'])
+        live_pois = map_service.fetch_live_pois(lat, lon, interests=interests, dietary=user_prefs['diet'],boost_scores=boost_scores)
 
         if not live_pois:
             return jsonify({
@@ -446,9 +452,11 @@ def regenerate_single_day():
 
         other_days_summary = (", ".join(other_days_activities) if other_days_activities else "None")
 
+        boost_scores = feedback_service.calculate_boost_scores(city.lower().strip())
+
         # Fetch POIs using ORIGINAL itinerary interests
         lat, lon = map_service.get_coordinates(city)
-        live_pois = map_service.fetch_live_pois(lat,lon,interests=interests,dietary=user_prefs["diet"])
+        live_pois = map_service.fetch_live_pois(lat,lon,interests=interests,dietary=user_prefs["diet"],boost_scores=boost_scores)
 
         if not live_pois:
             return jsonify({
@@ -536,6 +544,8 @@ def get_itinerary(itinerary_id):
     if not itinerary:
         return jsonify({"success": False, "message": "Requested itinerary not found."}), 404
 
+    feedback_stats = feedback_service.get_feedback_statistics(itinerary.city)
+
     result = {
         "title": itinerary.title,
         "city": itinerary.city,
@@ -563,7 +573,7 @@ def get_itinerary(itinerary_id):
             })
         result["days"].append(day_data)
 
-    return jsonify({"success": True, "data": result})
+    return jsonify({"success": True, "data": result, "feedback_stats": feedback_stats})
 
 @app.route("/submit_poi_feedback", methods=["POST"])
 @login_required
