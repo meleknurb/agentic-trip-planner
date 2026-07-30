@@ -233,12 +233,14 @@ async function loadItineraryData(id) {
 
         if (res.success) {
             const data = res.data;
+            const feedbackStats = res.feedback_stats || {};
 
             if (data.days && Array.isArray(data.days)) {
                 data.days.sort((a, b) => a.day_number - b.day_number);
             }
 
             currentItineraryData = data;
+            currentItineraryData.feedbackStats = feedbackStats;
             
             // Auto-populate sidebar form fields with fetched itinerary data to preserve UX state.
             const cityInput = document.getElementById("city");
@@ -325,6 +327,10 @@ async function loadItineraryData(id) {
                     
                     if (acts.length > 0) {
                         acts.forEach(act => {
+                            const stats = (currentItineraryData.feedbackStats && currentItineraryData.feedbackStats[act.poi_id]) 
+                                          ? currentItineraryData.feedbackStats[act.poi_id] 
+                                          : { up: 0, down: 0 };
+
                             dayHTML += `
                                 <div class="activity-item">
 
@@ -335,8 +341,12 @@ async function loadItineraryData(id) {
                                     <p class="act-why">💡 ${act.why}</p>
 
                                     <div class="poi-feedback-buttons">
-                                        <button class="feedback-btn upvote-btn" onclick="submitPoiFeedback('${data.city}','${act.poi_id}','up',this)">👍</button>
-                                        <button class="feedback-btn downvote-btn" onclick="submitPoiFeedback('${data.city}','${act.poi_id}','down',this)">👎</button>
+                                        <button class="feedback-btn upvote-btn" onclick="submitPoiFeedback('${data.city}','${act.poi_id}','up',this)" style="font-size: 0.75rem; padding: 4px 8px;">
+                                            👍 <span id="up-count-${act.poi_id}">${stats.up}</span>
+                                        </button>
+                                        <button class="feedback-btn downvote-btn" onclick="submitPoiFeedback('${data.city}','${act.poi_id}','down',this)" style="font-size: 0.75rem; padding: 4px 8px;">
+                                            👎 <span id="down-count-${act.poi_id}">${stats.down}</span>
+                                        </button>
                                     </div>
                                 </div>
                             `;
@@ -541,6 +551,12 @@ async function submitPoiFeedback(city, poiId, voteType, buttonElement) {
         const result = await response.json();
 
         if (result.success) {
+            const countSpanId = voteType === 'up' ? `up-count-${poiId}` : `down-count-${poiId}`;
+            const countSpan = document.getElementById(countSpanId);
+            if (countSpan) {
+                countSpan.innerText = parseInt(countSpan.innerText || "0") + 1;
+            }
+
             if (buttonElement) {
                 buttonElement.style.transform = "scale(1.3)";
                 buttonElement.style.opacity = "1";
