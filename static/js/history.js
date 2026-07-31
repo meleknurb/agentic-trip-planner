@@ -211,6 +211,9 @@ async function loadRouteDetails(id) {
             }
             
             currentItineraryData = data;
+            
+            const feedbackStats = res.feedback_stats || {};
+            currentItineraryData.feedbackStats = feedbackStats;
 
             // Cultural Knowledge Guide Markdown Parsing (RAG Layer Integration)
             const ragBox = document.getElementById("historyRagBox");
@@ -257,10 +260,22 @@ async function loadRouteDetails(id) {
                     
                     if (acts.length > 0) {
                         acts.forEach(act => {
+                            const stats = (currentItineraryData.feedbackStats && currentItineraryData.feedbackStats[act.poi_id]) 
+                                ? currentItineraryData.feedbackStats[act.poi_id] 
+                                : { up: 0, down: 0 };
+
                             dayHTML += `
                                 <div class="activity-item">
                                     <p class="act-name">📍 ${act.name}</p>
                                     <p class="act-why">💡 ${act.why}</p>
+                                    <div class="poi-feedback-buttons" style="margin-top: 8px;">
+                                        <button class="feedback-btn upvote-btn" onclick="submitPoiFeedback('${data.city}','${act.poi_id}','up',this)" style="font-size: 0.75rem; padding: 4px 8px;">
+                                            👍 <span id="up-count-${act.poi_id}">${stats.up}</span>
+                                        </button>
+                                        <button class="feedback-btn downvote-btn" onclick="submitPoiFeedback('${data.city}','${act.poi_id}','down',this)" style="font-size: 0.75rem; padding: 4px 8px;">
+                                            👎 <span id="down-count-${act.poi_id}">${stats.down}</span>
+                                        </button>
+                                    </div>
                                 </div>
                             `;
                             
@@ -325,6 +340,52 @@ async function loadRouteDetails(id) {
 }
 
 // 5. API REQUEST ACTIONS & DATABASE MUTATIONS
+
+/**
+ * Sends user feedback vote (up/down) for a specific Point of Interest.
+ */
+async function submitPoiFeedback(city, poiId, voteType, buttonElement) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || "";
+
+    try {
+        const response = await fetch("/submit_poi_feedback", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken
+            },
+            body: JSON.stringify({
+                city: city,
+                poi_id: poiId,
+                vote: voteType
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            const countSpanId = voteType === 'up' ? `up-count-${poiId}` : `down-count-${poiId}`;
+            const countSpan = document.getElementById(countSpanId);
+            if (countSpan) {
+                countSpan.innerText = parseInt(countSpan.innerText || "0") + 1;
+            }
+
+            if (buttonElement) {
+                buttonElement.style.transform = "scale(1.3)";
+                buttonElement.style.opacity = "1";
+                setTimeout(() => {
+                    buttonElement.style.transform = "scale(1)";
+                }, 200);
+            }
+        } else {
+            alert(result.message || "Unable to save feedback.");
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert("Unable to save feedback.");
+    }
+}
 
 /**
  * Asynchronously drops a saved route record item immediately from history database context.
