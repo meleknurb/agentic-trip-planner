@@ -162,7 +162,21 @@ def generate_itinerary():
         boost_scores = feedback_service.calculate_boost_scores(city.lower().strip())
 
         # Geocoding & Live OpenStreetMap POI collection via MapService
-        lat, lon = map_service.get_coordinates(city)
+        try:
+            lat, lon = map_service.get_coordinates(city)
+
+        except ValueError as e:
+            return jsonify({
+                "success": False,
+                "message": str(e)
+            }), 404
+
+        except RuntimeError:
+            return jsonify({
+                "success": False,
+                "message": "The geocoding service is temporarily unavailable. Please try again later."
+            }), 503
+
         live_pois = map_service.fetch_live_pois(lat, lon, interests=detected_interests, dietary=user_prefs['diet'],boost_scores=boost_scores)
 
         if not live_pois:
@@ -233,7 +247,7 @@ def generate_itinerary():
 
         return jsonify({
             "success": True,
-            "message": "Itinerary successfully coordinated, formatted, and persistent to storage.",
+            "message": "Itinerary generated successfully",
             "itinerary_id": new_itinerary.id
         })
 
@@ -301,7 +315,21 @@ def regenerate_itinerary():
 
         boost_scores = feedback_service.calculate_boost_scores(city.lower().strip())
 
-        lat, lon = map_service.get_coordinates(city)
+        try:
+            lat, lon = map_service.get_coordinates(city)
+
+        except ValueError as e:
+            return jsonify({
+                "success": False,
+                "message": str(e)
+            }), 404
+        
+        except RuntimeError:
+            return jsonify({
+                "success": False,
+                "message": "The geocoding service is temporarily unavailable. Please try again later."
+            }), 503
+
         live_pois = map_service.fetch_live_pois(lat, lon, interests=interests, dietary=user_prefs['diet'],boost_scores=boost_scores)
 
         if not live_pois:
@@ -455,7 +483,21 @@ def regenerate_single_day():
         boost_scores = feedback_service.calculate_boost_scores(city.lower().strip())
 
         # Fetch POIs using ORIGINAL itinerary interests
-        lat, lon = map_service.get_coordinates(city)
+        try:
+            lat, lon = map_service.get_coordinates(city)
+
+        except ValueError as e:
+            return jsonify({
+                "success": False,
+                "message": str(e)
+            }), 404
+        
+        except RuntimeError:
+            return jsonify({
+                "success": False,
+                "message": "The geocoding service is temporarily unavailable. Please try again later."
+            }), 503
+        
         live_pois = map_service.fetch_live_pois(lat,lon,interests=interests,dietary=user_prefs["diet"],boost_scores=boost_scores)
 
         if not live_pois:
@@ -634,7 +676,7 @@ def delete_itinerary(itinerary_id):
             
         db.session.delete(itinerary)
         db.session.commit()
-        return jsonify({"success": True, "message": "Itinerary lineage successfully wiped."})
+        return jsonify({"success": True, "message": "Itinerary deleted successfully."})
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "message": f"Decommission workflow failed: {str(e)}"}), 500
