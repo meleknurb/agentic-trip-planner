@@ -85,11 +85,11 @@ class MapService:
             data = response.json()
             
             if not data:
-                raise ValueError(f"City not found: {city_name}")
+                raise ValueError(f"City '{city_name}' was not found.")
                 
             return float(data[0]["lat"]), float(data[0]["lon"])
-        except Exception as e:
-            raise RuntimeError(f"Geocoding service error: {str(e)}")
+        except requests.RequestException as e:
+            raise RuntimeError(f"Geocoding service unavailable: {e}")
 
     def fetch_live_pois(self, lat: float, lon: float, interests: List[str], dietary: str, boost_scores: Dict[str, float] | None = None, radius_meters: int = 10000) -> List[POIModel]:
         """Fetch live points of interest (POIs) around the specified coordinates, 
