@@ -1,5 +1,7 @@
 /* static/js/history.js */
 
+import { showNotification } from './notification.js';
+
 // 1. GLOBAL STATE & CORE INSTANTIATION
 
 let map = null;
@@ -67,7 +69,7 @@ function editCurrentPlanInDashboard() {
     if (currentItineraryId) {
         window.location.href = `/dashboard?itinerary_id=${currentItineraryId}`;
     } else {
-        console.error("No itinerary is currently selected.");
+        showNotification("Please select an itinerary to edit first.", "error");
     }
 }
 
@@ -330,11 +332,11 @@ async function loadRouteDetails(id) {
             }, 100);
 
         } else {
-            console.error("Operational API Failure: " + res.message);
+            showNotification(res.message || "Failed to load route details.", "error");
             resetToEmptyState();
         }
     } catch (err) {
-        console.error("Network Ingestion Pipeline Error: " + err);
+        showNotification("Network error while loading route details.", "error");
         resetToEmptyState();
     }
 }
@@ -378,12 +380,11 @@ async function submitPoiFeedback(city, poiId, voteType, buttonElement) {
                 }, 200);
             }
         } else {
-            alert(result.message || "Unable to save feedback.");
+            showNotification(result.message || "Unable to save feedback.", "error");
         }
 
     } catch (err) {
-        console.error(err);
-        alert("Unable to save feedback.");
+        showNotification("Unable to save feedback: " + err, "error");
     }
 }
 
@@ -407,15 +408,16 @@ async function deleteRoute(event, id) {
         if (result.success) {
             document.getElementById(`route-${id}`).remove();
             resetToEmptyState();
+            showNotification(result.message, "success");
             
             if (document.querySelectorAll('.route-card').length === 0) {
                 location.reload();
             }
         } else {
-            console.error("Backend Abort operational sequence error: " + result.message);
+            showNotification(result.message || "Failed to delete itinerary.", "error");
         }
     } catch (err) {
-        console.error("Asynchronous deletion operation network crash: " + err);
+        showNotification("Network error while deleting itinerary.", "error");
     }
 }
 
@@ -452,3 +454,10 @@ document.addEventListener('click', function(e) {
         filterHistoryMapByDay(value);
     }
 });
+
+// Global Window bindings for HTML event attributes
+window.toggleRag = toggleRag;
+window.submitPoiFeedback = submitPoiFeedback;
+window.deleteRoute = deleteRoute;
+window.loadRouteDetails = loadRouteDetails;
+window.editCurrentPlanInDashboard = editCurrentPlanInDashboard;
