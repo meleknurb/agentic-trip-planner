@@ -19,6 +19,7 @@
     <!-- Application Structural Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/history.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/notification.css') }}">
 
     <!-- Markdown Engine Parser Injection -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -26,6 +27,8 @@
 <body>
 
     {% include 'navbar.html' %}
+
+    <div id="notificationContainer" class="notification-container"></div>
 
     <div class="history-layout">
         <!-- LEFT SIDEBAR: SAVED ROUTES RECORDS LIST -->
@@ -121,6 +124,6 @@
 
     <!-- External Runtime Execution Pipelines -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="{{ url_for('static', filename='js/history.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/history.js') }}"></script>
 </body>
 </html>
