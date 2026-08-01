@@ -1,5 +1,7 @@
 // static/js/dashboard.js
 
+import { showNotification } from './notification.js';
+
 // 1. GLOBAL STATE & CORE INSTANTIATION
 
 let map = null;
@@ -66,29 +68,6 @@ function toggleSingleDayRegenBox(dayNumber) {
         box.classList.toggle("hidden");
     }
 }
-
-/**
- * Displays user-friendly, non-blocking asynchronous operational feedback inside the DOM.
- */
-function renderFeedbackMessage(message) {
-    let feedbackElement = document.getElementById("runtimeFeedback");
-    
-    if (!feedbackElement) {
-        feedbackElement = document.createElement("div");
-        feedbackElement.id = "runtimeFeedback";
-        const form = document.getElementById("itineraryForm");
-        form.parentNode.insertBefore(feedbackElement, form.nextSibling);
-    }
-    
-    feedbackElement.innerText = message;
-    feedbackElement.className = "error-feedback";
-    feedbackElement.classList.remove("hidden");
-    
-    setTimeout(() => {
-        feedbackElement.classList.add("hidden");
-    }, 5000);
-}
-
 
 // 3. MAP FILTERING & CONTROL LOGIC
 
@@ -386,11 +365,11 @@ async function loadItineraryData(id) {
             filterMapByDay("all");
 
         } else {
-            renderFeedbackMessage("Failed to retrieve route details: " + res.message);
+            showNotification("Failed to retrieve route details: " + res.message, "error");
             resetViewState();
         }
     } catch (err) {
-        renderFeedbackMessage("An error occurred while building the route visual layout: " + err);
+        showNotification("An error occurred while building the route visual layout: " + err, "error");
         resetViewState();
     }
 }
@@ -399,19 +378,18 @@ async function loadItineraryData(id) {
 
 /**
  * Dispatches a revision feedback request to the iterative AI agent pipeline.
- * Repaints the visual canvas asynchronously without breaking map contexts.
  */
 async function submitPlanRegeneration() {
     const feedbackText = document.getElementById("regenFeedback").value.trim();
     const submitBtn = document.getElementById("submitRegenBtn");
 
     if (!feedbackText) {
-        alert("Please specify what you would like the AI to change before applying adjustments.");
+        showNotification("Please specify what you would like the AI to change before applying adjustments.", "error");
         return;
     }
 
     if (!currentLoadedItineraryId) {
-        renderFeedbackMessage("No active itinerary reference target discovered to direct updates.");
+        showNotification("No active itinerary reference target discovered to direct updates.", "error");
         return;
     }
 
@@ -450,14 +428,15 @@ async function submitPlanRegeneration() {
         const result = await response.json();
 
         if (result.success) {
+            showNotification(result.message, "success");
             await loadItineraryData(result.itinerary_id);
         } else {
-            renderFeedbackMessage(`AI Regeneration failed: ${result.message || 'Unknown internal service exception.'}`);
+            showNotification(`AI Regeneration failed: ${result.message || 'Unknown internal service exception.'}`, "error");
             document.getElementById("loadingState").classList.add("hidden");
             document.getElementById("itineraryContent").classList.remove("hidden");
         }
     } catch (err) {
-        renderFeedbackMessage("A network failure occurred during iterative reconstruction: " + err);
+        showNotification("A network failure occurred during iterative reconstruction: " + err, "error");
         document.getElementById("loadingState").classList.add("hidden");
         document.getElementById("itineraryContent").classList.remove("hidden");
     } finally {
@@ -474,12 +453,12 @@ async function submitSingleDayRegeneration(dayNumber) {
     const feedbackText = feedbackInput ? feedbackInput.value.trim() : "";
     
     if (!feedbackText) {
-        alert(`Please specify what you would like to change for Day ${dayNumber}.`);
+        showNotification(`Please specify what you would like to change for Day ${dayNumber}.`, "error");
         return;
     }
 
     if (!currentLoadedItineraryId) {
-        renderFeedbackMessage("No active itinerary reference target discovered.");
+        showNotification("No active itinerary reference target discovered.", "error");
         return;
     }
 
@@ -512,15 +491,15 @@ async function submitSingleDayRegeneration(dayNumber) {
         const result = await response.json();
 
         if (result.success) {
+            showNotification(result.message, "success");
             await loadItineraryData(currentLoadedItineraryId);
-            renderFeedbackMessage(result.message);
         } else {
-            renderFeedbackMessage(`Single day regeneration failed: ${result.message}`);
+            showNotification(`Single day regeneration failed: ${result.message}`, "error");
             document.getElementById("loadingState").classList.add("hidden");
             document.getElementById("itineraryContent").classList.remove("hidden");
         }
     } catch (err) {
-        renderFeedbackMessage("A network failure occurred during single-day update: " + err);
+        showNotification("A network failure occurred during single-day update: " + err, "error");
         document.getElementById("loadingState").classList.add("hidden");
         document.getElementById("itineraryContent").classList.remove("hidden");
     }
@@ -565,12 +544,11 @@ async function submitPoiFeedback(city, poiId, voteType, buttonElement) {
                 }, 200);
             }
         } else {
-            alert(result.message);
+            showNotification(result.message, "error");
         }
 
     } catch (err) {
-        console.error(err);
-        alert("Unable to save feedback.");
+        showNotification("Unable to save feedback: " + err, "error");
     }
 }
 
@@ -602,15 +580,16 @@ document.getElementById("itineraryForm").addEventListener("submit", async functi
         const result = await response.json();
         
         if (result.success) {
+            showNotification(result.message, "success");
             await loadItineraryData(result.itinerary_id);
             const newUrl = `${window.location.pathname}?itinerary_id=${result.itinerary_id}`;
             window.history.pushState({ path: newUrl }, '', newUrl);
         } else {
-            renderFeedbackMessage(`No destinations found for "${city}". The area might be too large (e.g. state/country) or servers are busy. Please try a specific city.`);
+            showNotification(result.message || "An unknown error occurred while processing your request.", "error");
             resetViewState();
         }
     } catch (err) {
-        renderFeedbackMessage("A critical system exception occurred: " + err);
+        showNotification("A critical system exception occurred: " + err, "error");
         resetViewState();
     } finally {
         document.getElementById("generateBtn").disabled = false;
@@ -625,3 +604,10 @@ document.addEventListener("DOMContentLoaded", () => {
         loadItineraryData(itineraryId);
     }
 });
+
+window.toggleRag = toggleRag;
+window.toggleRegenBox = toggleRegenBox;
+window.toggleSingleDayRegenBox = toggleSingleDayRegenBox;
+window.submitPlanRegeneration = submitPlanRegeneration;
+window.submitSingleDayRegeneration = submitSingleDayRegeneration;
+window.submitPoiFeedback = submitPoiFeedback;
