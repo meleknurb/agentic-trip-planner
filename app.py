@@ -212,7 +212,14 @@ def generate_itinerary():
                 "message": "The geocoding service is temporarily unavailable. Please try again later."
             }), 503
 
-        live_pois = map_service.fetch_live_pois(lat, lon, interests=detected_interests, dietary=user_prefs['diet'],boost_scores=boost_scores)
+        try:
+            live_pois = map_service.fetch_live_pois(lat, lon, interests=detected_interests, dietary=user_prefs['diet'],boost_scores=boost_scores)
+
+        except RuntimeError:
+            return jsonify({
+                "success": False,
+                "message": "The POI service is temporarily unavailable. Please try again later."
+            }), 503
 
         if not live_pois:
             return jsonify({
@@ -404,12 +411,19 @@ def regenerate_itinerary():
                 "message": "The geocoding service is temporarily unavailable. Please try again later."
             }), 503
 
-        live_pois = map_service.fetch_live_pois(lat, lon, interests=interests, dietary=user_prefs['diet'],boost_scores=boost_scores)
+        try:
+            live_pois = map_service.fetch_live_pois(lat, lon, interests=interests, dietary=user_prefs['diet'],boost_scores=boost_scores)
+
+        except RuntimeError:
+            return jsonify({
+                "success": False,
+                "message": "The POI service is temporarily unavailable. Please try again later."
+            }), 503
 
         if not live_pois:
             return jsonify({
                 "success": False,
-                "message": f"No POIs found for {city}."
+                "message": f"No active live destination points could be found for {city} matching interests."
             }), 404
 
         poi_lookup = {poi.poi_id: poi for poi in live_pois}
@@ -590,13 +604,20 @@ def regenerate_single_day():
                 "success": False,
                 "message": "The geocoding service is temporarily unavailable. Please try again later."
             }), 503
-        
-        live_pois = map_service.fetch_live_pois(lat,lon,interests=interests,dietary=user_prefs["diet"],boost_scores=boost_scores)
+
+        try:
+            live_pois = map_service.fetch_live_pois(lat,lon,interests=interests,dietary=user_prefs["diet"],boost_scores=boost_scores)
+
+        except RuntimeError:
+            return jsonify({
+                "success": False,
+                "message": "The POI service is temporarily unavailable. Please try again later."
+            }), 503
 
         if not live_pois:
             return jsonify({
                 "success": False,
-                "message": f"No POIs found for {city}."
+                "message": f"No active live destination points could be found for {city} matching interests."
             }), 404
 
         poi_lookup = {poi.poi_id: poi for poi in live_pois}

@@ -203,6 +203,8 @@ class MapService:
 
             return balanced_pois[:45]
             
-        except Exception as e:
-            print(f"Overpass API Error: {str(e)}")
-            return []
+        except requests.RequestException as e:
+            raise RuntimeError(f"Overpass API is unavailable: {e}")
+
+        except ValueError as e:
+            raise RuntimeError(f"Invalid response received from Overpass API: {e}")
