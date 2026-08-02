@@ -38,6 +38,8 @@ rag_service = RAGService()
 map_service = MapService()
 feedback_service = FeedbackService()
 
+# Define a set of valid interests for user selection and itinerary generation
+VALID_INTERESTS = {"history","museums","scenic","food","coffee","outdoors","nightlife","shopping","entertainment"}
 
 @app.route("/")
 def index():
@@ -142,24 +144,57 @@ def history():
 def generate_itinerary():
     """Main orchestration endpoint managing the entire AI Agent RAG travel generation pipeline."""
     data = request.get_json() or {}
-
-    city = data.get("city")
-    duration = data.get("duration", 3)
-    detected_interests = data.get("interests", [])
+    city = data.get("city", "").strip()
 
     if not city:
         return jsonify({
-            "success": False,
+         "success": False,
             "message": "Target city name is mandatory to execute planning workflow."
         }), 400
 
+    try:
+        duration = int(data.get("duration", 3))
+    except (TypeError, ValueError):
+        return jsonify({
+            "success": False,
+            "message": "Duration must be a valid number."
+        }), 400
+
+    if duration < 1 or duration > 7:
+        return jsonify({
+            "success": False,
+            "message": "Duration must be between 1 and 7 days."
+        }), 400
+
+    detected_interests = data.get("interests", [])
+
+    if not isinstance(detected_interests, list):
+        return jsonify({
+            "success": False,
+            "message": "Interests must be provided as a list."
+        }), 400
+
+    if not detected_interests:
+        return jsonify({
+            "success": False,
+            "message": "Please select at least one interest category."
+        }), 400
+
+    invalid_interests = [interest for interest in detected_interests if interest not in VALID_INTERESTS]
+
+    if invalid_interests:
+        return jsonify({
+            "success": False,
+            "message": f"Invalid interest categories: {', '.join(invalid_interests)}."
+        }), 400
+    
     try:
         user_prefs = {
             'pace': current_user.travel_pace,
             'diet': current_user.dietary_preference
         }
 
-        boost_scores = feedback_service.calculate_boost_scores(city.lower().strip())
+        boost_scores = feedback_service.calculate_boost_scores(city.lower())
 
         # Geocoding & Live OpenStreetMap POI collection via MapService
         try:
@@ -283,6 +318,45 @@ def regenerate_itinerary():
             "message": "Feedback cannot be empty."
         }), 400
 
+    # Duration (only if the user supplied a new value)
+    if new_duration is not None:
+        try:
+            new_duration = int(new_duration)
+        except (TypeError, ValueError):
+            return jsonify({
+                "success": False,
+                "message": "Duration must be a valid number."
+            }), 400
+
+        if not 1 <= new_duration <= 7:
+            return jsonify({
+                "success": False,
+                "message": "Duration must be between 1 and 7 days."
+            }), 400
+
+    # Interests (only if the user supplied them)
+    if new_interests is not None:
+
+        if not isinstance(new_interests, list):
+            return jsonify({
+                "success": False,
+                "message": "Interests must be provided as a list."
+            }), 400
+
+        if not new_interests:
+            return jsonify({
+                "success": False,
+                "message": "Please select at least one interest category."
+            }), 400
+
+        invalid_interests = [interest for interest in new_interests if interest not in VALID_INTERESTS]
+
+        if invalid_interests:
+            return jsonify({
+                "success": False,
+                "message": f"Invalid interest categories: {', '.join(invalid_interests)}."
+            }), 400
+
     try:
         current_itinerary = Itinerary.query.filter_by(id=itinerary_id,user_id=current_user.id).first()
 
@@ -298,8 +372,8 @@ def regenerate_itinerary():
         }
 
         city = current_itinerary.city
-        interests = (new_interests if new_interests else current_itinerary.interests)
-        duration = (int(new_duration) if new_duration else current_itinerary.total_days)
+        interests = new_interests if new_interests is not None else current_itinerary.interests
+        duration = new_duration if new_duration is not None else current_itinerary.total_days
 
         lines = []
 
@@ -313,7 +387,7 @@ def regenerate_itinerary():
 
         old_itinerary_text = "\n".join(lines)
 
-        boost_scores = feedback_service.calculate_boost_scores(city.lower().strip())
+        boost_scores = feedback_service.calculate_boost_scores(city.lower())
 
         try:
             lat, lon = map_service.get_coordinates(city)
@@ -404,12 +478,12 @@ def regenerate_itinerary():
             "itinerary_id": current_itinerary.id
         })
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
 
         return jsonify({
             "success": False,
-            "message": str(e)
+            "message": "An unexpected error occurred while regenerating the itinerary."
         }), 500
 
 @app.route("/regenerate_single_day", methods=["POST"])
@@ -420,19 +494,32 @@ def regenerate_single_day():
     data = request.get_json() or {}
 
     itinerary_id = data.get("itinerary_id")
-    day_number = data.get("day_number")
     feedback = (data.get("feedback") or "").strip()
 
-    if not itinerary_id or not day_number:
+    try:
+        day_number = int(data.get("day_number"))
+    except (TypeError, ValueError):
         return jsonify({
             "success": False,
-            "message": "Itinerary id and day number are required."
+            "message": "Day number must be a valid number."
+        }), 400
+
+    if not itinerary_id:
+        return jsonify({
+            "success": False,
+            "message": "Itinerary id is required."
         }), 400
 
     if not feedback:
         return jsonify({
             "success": False,
             "message": "Feedback cannot be empty."
+        }), 400
+
+    if day_number < 1:
+        return jsonify({
+            "success": False,
+            "message": "Day number must be greater than zero."
         }), 400
 
     try:
@@ -443,6 +530,12 @@ def regenerate_single_day():
                 "success": False,
                 "message": "Itinerary not found."
             }), 404
+
+        if day_number > current_itinerary.total_days:
+            return jsonify({
+                "success": False,
+                "message": f"Day number cannot exceed the total duration of the itinerary ({current_itinerary.total_days} days)."
+            }), 400
 
         target_day_obj = ItineraryDay.query.filter_by(itinerary_id=current_itinerary.id,day_number=day_number).first()
 
@@ -474,13 +567,13 @@ def regenerate_single_day():
         other_days_activities = []
 
         for day in current_itinerary.days:
-            if int(day.day_number) != int(day_number):
+            if day.day_number != day_number:
                 for act in day.activities:
                     other_days_activities.append(act.name)
 
         other_days_summary = (", ".join(other_days_activities) if other_days_activities else "None")
 
-        boost_scores = feedback_service.calculate_boost_scores(city.lower().strip())
+        boost_scores = feedback_service.calculate_boost_scores(city.lower())
 
         # Fetch POIs using ORIGINAL itinerary interests
         try:
@@ -513,7 +606,7 @@ def regenerate_single_day():
 
         itinerary_data = agent.regenerate_single_day(
             city_name=city,
-            target_day_number=int(day_number),
+            target_day_number=day_number,
             total_days=total_days,
             live_pois=live_pois,
             old_day_text=old_day_text,
@@ -525,10 +618,13 @@ def regenerate_single_day():
         )
 
         # Replace ONLY the selected day
+        updated = False
         for day_plan in itinerary_data.days:
 
-            if int(day_plan.day) != int(day_number):
+            if day_plan.day != day_number:
                 continue
+
+            updated = True
 
             ItineraryActivity.query.filter_by(day_id=target_day_obj.id).delete()
 
@@ -562,6 +658,9 @@ def regenerate_single_day():
 
             break
 
+        if not updated:
+            raise RuntimeError("Gemini did not return the requested day.")
+
         db.session.commit()
 
         return jsonify({
@@ -570,12 +669,12 @@ def regenerate_single_day():
             "itinerary_id": current_itinerary.id
         })
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
 
         return jsonify({
             "success": False,
-            "message": str(e)
+            "message": "An unexpected error occurred while regenerating the itinerary."
         }), 500
 
 @app.route("/get_itinerary/<int:itinerary_id>")
