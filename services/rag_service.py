@@ -15,9 +15,13 @@ class RAGService:
         # Built-in resilient HTTP Session configuration
         self.session = requests.Session()
         retry_strategy = Retry(
-            total=3,
-            backoff_factor=1,
+            total=5,
+            connect=5,
+            read=5,
+            backoff_factor=2,
             status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["GET"],
+            respect_retry_after_header=True
         )
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("http://", adapter)

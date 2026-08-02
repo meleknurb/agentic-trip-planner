@@ -58,7 +58,7 @@ class GeminiAgent:
             return TripItineraryModel.model_validate_json(response.text)
 
         except APIError as ae:
-            raise RuntimeError(f"Gemini API Error occurred: {ae.message} (Status Code: {ae.code})")
+            raise RuntimeError("Gemini service is temporarily unavailable. Please try again in a few moments.")
         except ValidationError as ve:
             raise RuntimeError(f"Gemini output structural validation failed against TripItineraryModel: {str(ve)}")
         except Exception as e:
@@ -100,7 +100,7 @@ class GeminiAgent:
             return TripItineraryModel.model_validate_json(response.text)
 
         except APIError as ae:
-            raise RuntimeError(f"Gemini API Error during regeneration: {ae.message} (Status Code: {ae.code})")
+            raise RuntimeError("Gemini service is temporarily unavailable. Please try again in a few moments.")
         except ValidationError as ve:
             raise RuntimeError(f"Gemini output structural validation failed during regeneration: {str(ve)}")
         except Exception as e:
@@ -143,7 +143,7 @@ class GeminiAgent:
             return TripItineraryModel.model_validate_json(response.text)
 
         except APIError as ae:
-            raise RuntimeError(f"Gemini API Error during single day regeneration: {ae.message} (Status Code: {ae.code})")
+            raise RuntimeError("Gemini service is temporarily unavailable. Please try again in a few moments.")
         except ValidationError as ve:
             raise RuntimeError(f"Gemini output structural validation failed during single day regeneration: {str(ve)}")
         except Exception as e:
