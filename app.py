@@ -6,6 +6,7 @@ import time
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_wtf.csrf import CSRFProtect
 from flask_login import login_user, logout_user, current_user, login_required
+from werkzeug.exceptions import BadRequest
 
 from core.config import Config
 from core.db_models import db, User, Itinerary, ItineraryDay, ItineraryActivity, Feedback, login_manager
@@ -40,6 +41,21 @@ feedback_service = FeedbackService()
 
 # Define a set of valid interests for user selection and itinerary generation
 VALID_INTERESTS = {"history","museums","scenic","food","coffee","outdoors","nightlife","shopping","entertainment"}
+
+# Error handler for malformed JSON requests
+@app.errorhandler(BadRequest)
+def handle_bad_request(e):
+    """Return JSON instead of HTML for malformed client requests."""
+
+    if request.is_json:
+        message = "Malformed JSON request. Please check the request body and try again."
+    else:
+        message = "Bad request."
+
+    return jsonify({
+        "success": False,
+        "message": message
+    }), 400
 
 @app.route("/")
 def index():
