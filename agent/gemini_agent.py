@@ -1,6 +1,7 @@
 # agent/gemini_agent.py
 
 import json
+import httpx
 from google import genai
 from google.genai import types
 from google.genai.errors import APIError
@@ -19,7 +20,7 @@ class GeminiAgent:
         if not api_key:
             raise ValueError("GOOGLE_API_KEY could not be found in Config. Please verify your environment variables.")
 
-        self.client = genai.Client(api_key=api_key)
+        self.client = genai.Client(api_key=api_key,http_options=types.HttpOptions(timeout=120.0))
         self.model_name = "gemini-2.5-flash"
 
     def generate_itinerary(self, city_name: str, total_days: int, live_pois: list[POIModel], rag_context: str, interests: list[str], user_preferences: dict) -> TripItineraryModel:
@@ -57,12 +58,14 @@ class GeminiAgent:
 
             return TripItineraryModel.model_validate_json(response.text)
 
-        except APIError as ae:
+        except httpx.TimeoutException:
+            raise RuntimeError("The AI request timed out. Please try again.")
+        except APIError:
             raise RuntimeError("Gemini service is temporarily unavailable. Please try again in a few moments.")
         except ValidationError as ve:
             raise RuntimeError(f"Gemini output structural validation failed against TripItineraryModel: {str(ve)}")
-        except Exception as e:
-            raise RuntimeError(f"Gemini Agent execution failed due to an unexpected error: {str(e)}")
+        except Exception: 
+            raise RuntimeError("An unexpected error occurred while generating the itinerary. Please try again later.")
 
     def regenerate_itinerary(self, city_name: str, total_days: int, live_pois: list[POIModel], old_itinerary_text: str, feedback: str, rag_context: str, interests: list[str], user_preferences: dict) -> TripItineraryModel:
         """Modifies and rebuilds an existing travel layout by forcing Gemini to ingest custom user feedback."""
@@ -99,12 +102,14 @@ class GeminiAgent:
 
             return TripItineraryModel.model_validate_json(response.text)
 
-        except APIError as ae:
+        except httpx.TimeoutException:
+            raise RuntimeError("The AI request timed out. Please try again.")
+        except APIError:
             raise RuntimeError("Gemini service is temporarily unavailable. Please try again in a few moments.")
         except ValidationError as ve:
             raise RuntimeError(f"Gemini output structural validation failed during regeneration: {str(ve)}")
-        except Exception as e:
-            raise RuntimeError(f"Gemini Agent regeneration pipeline failed: {str(e)}")
+        except Exception:
+            raise RuntimeError("An unexpected error occurred while regenerating the itinerary. Please try again later.")
 
     def regenerate_single_day(self, city_name: str, target_day_number: int, total_days: int, live_pois: list[POIModel], old_day_text: str, feedback: str, rag_context: str, interests: list[str], user_preferences: dict, other_days_summary:str) -> TripItineraryModel:
         """Modifies and rebuilds ONLY a specific day of an existing travel itinerary based on user feedback."""
@@ -142,9 +147,11 @@ class GeminiAgent:
             )
             return TripItineraryModel.model_validate_json(response.text)
 
-        except APIError as ae:
+        except httpx.TimeoutException:
+            raise RuntimeError("The AI request timed out. Please try again.")
+        except APIError:
             raise RuntimeError("Gemini service is temporarily unavailable. Please try again in a few moments.")
         except ValidationError as ve:
             raise RuntimeError(f"Gemini output structural validation failed during single day regeneration: {str(ve)}")
-        except Exception as e:
-            raise RuntimeError(f"Gemini Agent single day regeneration pipeline failed: {str(e)}")
+        except Exception:
+            raise RuntimeError("An unexpected error occurred while regenerating the single day itinerary. Please try again later.")
