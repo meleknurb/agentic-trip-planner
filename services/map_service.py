@@ -147,7 +147,7 @@ class MapService:
                     if diet_tag == "no":
                         continue
                     
-                category = "historical" if "historical" in tags_dict else tags_dict.get("tourism") or tags_dict.get("amenity") or "point_of_interest"
+                category = (tags_dict.get("historic") or tags_dict.get("tourism") or tags_dict.get("amenity") or "point_of_interest")
                 osm_id = f"{elem.get('type')}_{elem.get('id')}"
 
                 poi_obj = POIModel(
@@ -184,22 +184,6 @@ class MapService:
                         unique_list.append(p)
                 
                 balanced_pois.extend(unique_list[:max_per_interest])
-
-            if not balanced_pois:
-                for elem in elements[:40]:
-                    poi_lat = elem.get("lat") or elem.get("center", {}).get("lat")
-                    poi_lon = elem.get("lon") or elem.get("center", {}).get("lon")
-                    tags_dict = elem.get("tags", {})
-                    name = tags_dict.get("name")
-                    if name and poi_lat and poi_lon:
-                        balanced_pois.append(POIModel(
-                            poi_id=f"{elem.get('type')}_{elem.get('id')}",
-                            name=name,
-                            category="point_of_interest",
-                            lat=float(poi_lat),
-                            lon=float(poi_lon),
-                            url=tags_dict.get("website", "")
-                        ))
 
             return balanced_pois[:45]
             
