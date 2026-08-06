@@ -42,6 +42,9 @@ feedback_service = FeedbackService()
 # Define a set of valid interests for user selection and itinerary generation
 VALID_INTERESTS = {"history","museums","scenic","food","coffee","outdoors","nightlife","shopping","entertainment"}
 
+# Define a minimum threshold for the number of POIs required to generate a valid itinerary
+MIN_REQUIRED_POIS = 5
+
 # Error handler for malformed JSON requests
 @app.errorhandler(BadRequest)
 def handle_bad_request(e):
@@ -237,11 +240,15 @@ def generate_itinerary():
                 "message": "The POI service is temporarily unavailable. Please try again later."
             }), 503
 
-        if not live_pois:
+        if len(live_pois) < MIN_REQUIRED_POIS:
             return jsonify({
                 "success": False,
-                "message": f"No active live destination points could be found for {city} matching interests."
-            }), 404
+                "message": (
+                    "Unfortunately, there aren't enough places matching your selected "
+                    "interests in this destination. Please try different interests or "
+                    "a larger city."
+                )
+            }), 422
 
         poi_lookup = {poi.poi_id: poi for poi in live_pois}
 
@@ -436,11 +443,15 @@ def regenerate_itinerary():
                 "message": "The POI service is temporarily unavailable. Please try again later."
             }), 503
 
-        if not live_pois:
+        if len(live_pois) < MIN_REQUIRED_POIS:
             return jsonify({
                 "success": False,
-                "message": f"No active live destination points could be found for {city} matching interests."
-            }), 404
+                "message": (
+                    "Unfortunately, there aren't enough places matching your selected "
+                    "interests in this destination. Please try different interests or "
+                    "a larger city."
+                )
+            }), 422
 
         poi_lookup = {poi.poi_id: poi for poi in live_pois}
 
@@ -630,11 +641,15 @@ def regenerate_single_day():
                 "message": "The POI service is temporarily unavailable. Please try again later."
             }), 503
 
-        if not live_pois:
+        if len(live_pois) < MIN_REQUIRED_POIS:
             return jsonify({
                 "success": False,
-                "message": f"No active live destination points could be found for {city} matching interests."
-            }), 404
+                "message": (
+                    "Unfortunately, there aren't enough places matching your selected "
+                    "interests in this destination. Please try different interests or "
+                    "a larger city."
+                )
+            }), 422
 
         poi_lookup = {poi.poi_id: poi for poi in live_pois}
 
