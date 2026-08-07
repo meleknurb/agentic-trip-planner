@@ -56,6 +56,10 @@ class GeminiAgent:
                 ),
             )
 
+            # Validate that Gemini returned a usable response
+            if not response or not response.text:
+                raise RuntimeError("Gemini returned an empty response. Please try again.")
+
             return TripItineraryModel.model_validate_json(response.text)
 
         except httpx.TimeoutException:
@@ -64,6 +68,8 @@ class GeminiAgent:
             raise RuntimeError("Gemini service is temporarily unavailable. Please try again in a few moments.")
         except ValidationError as ve:
             raise RuntimeError(f"Gemini output structural validation failed against TripItineraryModel: {str(ve)}")
+        except RuntimeError:
+            raise
         except Exception: 
             raise RuntimeError("An unexpected error occurred while generating the itinerary. Please try again later.")
 
@@ -100,6 +106,9 @@ class GeminiAgent:
                 ),
             )
 
+            if not response or not response.text:
+                raise RuntimeError("Gemini returned an empty response during regeneration. Please try again.")
+
             return TripItineraryModel.model_validate_json(response.text)
 
         except httpx.TimeoutException:
@@ -108,6 +117,8 @@ class GeminiAgent:
             raise RuntimeError("Gemini service is temporarily unavailable. Please try again in a few moments.")
         except ValidationError as ve:
             raise RuntimeError(f"Gemini output structural validation failed during regeneration: {str(ve)}")
+        except RuntimeError:
+            raise
         except Exception:
             raise RuntimeError("An unexpected error occurred while regenerating the itinerary. Please try again later.")
 
@@ -145,6 +156,9 @@ class GeminiAgent:
                     response_schema=TripItineraryModel, 
                 ),
             )
+            if not response or not response.text:
+                raise RuntimeError("Gemini returned an empty response during single day regeneration. Please try again.")
+            
             return TripItineraryModel.model_validate_json(response.text)
 
         except httpx.TimeoutException:
@@ -153,5 +167,7 @@ class GeminiAgent:
             raise RuntimeError("Gemini service is temporarily unavailable. Please try again in a few moments.")
         except ValidationError as ve:
             raise RuntimeError(f"Gemini output structural validation failed during single day regeneration: {str(ve)}")
+        except RuntimeError:
+            raise
         except Exception:
             raise RuntimeError("An unexpected error occurred while regenerating the single day itinerary. Please try again later.")
