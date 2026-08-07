@@ -256,14 +256,20 @@ def generate_itinerary():
         rag_context = rag_service.retrieve_relevant_context(city_name=city, interests=detected_interests, pace=user_prefs['pace'], dietary=user_prefs['diet'])
 
         # Prompt synthesis and Gemini model transaction targeting structured schema blueprints
-        itinerary_data = agent.generate_itinerary(
-            city_name=city,
-            total_days=duration,
-            live_pois=live_pois,
-            rag_context=rag_context,
-            interests=detected_interests,
-            user_preferences=user_prefs
-        )
+        try:
+            itinerary_data = agent.generate_itinerary(
+                city_name=city,
+                total_days=duration,
+                live_pois=live_pois,
+                rag_context=rag_context,
+                interests=detected_interests,
+                user_preferences=user_prefs
+            )
+        except RuntimeError as e:
+            return jsonify({
+                "success": False,
+                "message": str(e)
+            }), 503
 
         #  Atomic database persistence ledger transactions
         new_itinerary = Itinerary(
@@ -457,16 +463,22 @@ def regenerate_itinerary():
 
         rag_context = rag_service.retrieve_relevant_context(city_name=city, interests=interests, pace=user_prefs['pace'], dietary=user_prefs['diet'])
 
-        itinerary_data = agent.regenerate_itinerary(
-            city_name=city,
-            total_days=duration,
-            live_pois=live_pois,
-            old_itinerary_text=old_itinerary_text,
-            feedback=feedback,
-            rag_context=rag_context,
-            interests=interests,
-            user_preferences=user_prefs
-        )
+        try:
+            itinerary_data = agent.regenerate_itinerary(
+                city_name=city,
+                total_days=duration,
+                live_pois=live_pois,
+                old_itinerary_text=old_itinerary_text,
+                feedback=feedback,
+                rag_context=rag_context,
+                interests=interests,
+                user_preferences=user_prefs
+            )
+        except RuntimeError as e:
+            return jsonify({
+                "success": False,
+                "message": str(e)
+            }), 503
 
         current_itinerary.days.clear()
         db.session.flush()
@@ -656,18 +668,24 @@ def regenerate_single_day():
         # Preserve existing RAG context
         rag_context = current_itinerary.rag_context
 
-        itinerary_data = agent.regenerate_single_day(
-            city_name=city,
-            target_day_number=day_number,
-            total_days=total_days,
-            live_pois=live_pois,
-            old_day_text=old_day_text,
-            feedback=feedback,
-            rag_context=rag_context,
-            interests=interests,
-            user_preferences=user_prefs,
-            other_days_summary=other_days_summary
-        )
+        try:
+            itinerary_data = agent.regenerate_single_day(
+                city_name=city,
+                target_day_number=day_number,
+                total_days=total_days,
+                live_pois=live_pois,
+                old_day_text=old_day_text,
+                feedback=feedback,
+                rag_context=rag_context,
+                interests=interests,
+                user_preferences=user_prefs,
+                other_days_summary=other_days_summary
+            )
+        except RuntimeError as e:
+            return jsonify({
+                "success": False,
+                "message": str(e)
+            }), 503
 
         # Replace ONLY the selected day
         updated = False
