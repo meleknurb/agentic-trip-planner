@@ -39,10 +39,22 @@ class RAGService:
         try:
             response = self.session.get(self.wikivoyage_url, params=params, headers=self.headers, timeout=10)
             response.raise_for_status()
-            search_results = response.json().get("query", {}).get("search", [])
+
+            try:
+                data = response.json()
+            except ValueError:
+                print("Wikivoyage Title Resolve Error: Invalid JSON response.")
+                return None
+            
+            search_results = data.get("query", {}).get("search", [])
+
+            if not isinstance(search_results, list):
+                return None
+            
             return search_results[0]["title"] if search_results else None
-        except Exception as e:
-            print(f"Wikivoyage Title Resolve Error: {str(e)}")
+        
+        except requests.RequestException as e:
+            print(f"Wikivoyage Title Resolve Error: {e}")
             return None
 
     def fetch_city_guide_text(self, city_name: str) -> str:
@@ -60,9 +72,16 @@ class RAGService:
         try:
             response = self.session.get(self.wikivoyage_url, params=params, headers=self.headers, timeout=15)
             response.raise_for_status()
-            html = response.json().get("parse", {}).get("text", {}).get("*", "")
 
-            if not html:
+            try:
+                data = response.json()
+            except ValueError:
+                print("Invalid JSON received while fetching Wikivoyage content.")
+                return ""
+            
+            html = data.get("parse", {}).get("text", {}).get("*", "")
+
+            if not isinstance(html, str) or not html:
                 return ""
 
             # Remove scripts, styles, and tags
@@ -73,8 +92,8 @@ class RAGService:
             text = re.sub(r"\s+", " ", text).strip()
 
             return text
-        except Exception as e:
-            print(f"Wikivoyage Content Fetch Error: {str(e)}")
+        except requests.RequestException as e:
+            print(f"Wikivoyage Content Fetch Error: {e}")
             return ""
 
     def retrieve_relevant_context(self, city_name: str, interests: List[str], pace: str, dietary: str, chunk_size: int = 1200) -> str:
@@ -87,7 +106,7 @@ class RAGService:
             return ""
 
         # Split by paragraphs or clean windows to maintain semantics
-        paragraphs = full_text.split(". ")
+        paragraphs = re.split(r"(?<=[.!?])\s+", full_text)
         chunks = []
         current_chunk = ""
 
@@ -143,9 +162,5 @@ class RAGService:
         
         # Take the most relevant chunks up to a reasonable length to fit nicely into the prompt window
         top_chunks = [chunk for score, chunk in scored_chunks[:4]]
-        
-        # Fallback to absolute baseline if no specific interest tags matched heavily
-        if not top_chunks:
-            return full_text[:4000]
 
         return "\n\n---\n\n".join(top_chunks)
