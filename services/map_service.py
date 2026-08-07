@@ -86,12 +86,35 @@ class MapService:
         try:
             response = self.session.get(self.nominatim_url, params=params, headers=self.headers, timeout=10)
             response.raise_for_status()
-            data = response.json()
+
+            # Handle malformed JSON responses
+            try:
+                data = response.json()
+            except ValueError:
+                raise RuntimeError("Geocoding service returned an invalid response.")
+
+            # Validate response structure
+            if not isinstance(data, list):
+                raise RuntimeError("Geocoding service returned an unexpected response format.")
             
             if not data:
                 raise ValueError(f"City '{city_name}' was not found.")
-                
-            return float(data[0]["lat"]), float(data[0]["lon"])
+
+            first_result = data[0]
+            if not isinstance(first_result, dict):
+                raise RuntimeError("Geocoding service returned an unexpected response format.")
+
+            if "lat" not in first_result or "lon" not in first_result:
+                raise RuntimeError("Geocoding service response is missing latitude or longitude.")
+
+            try:
+                lat = float(first_result["lat"])
+                lon = float(first_result["lon"])
+            except (TypeError, ValueError):
+                raise RuntimeError("Geocoding service returned invalid latitude or longitude values.")
+            
+            return lat, lon
+
         except requests.RequestException as e:
             raise RuntimeError(f"Geocoding service unavailable: {e}")
 
@@ -126,20 +149,46 @@ class MapService:
         try:
             response = self.session.post(self.overpass_url, data={"data": overpass_query}, headers=self.headers, timeout=70)
             response.raise_for_status()
-            data = response.json()
+
+            # Handle malformed JSON responses
+            try:
+                data = response.json()
+            except ValueError:
+                raise RuntimeError("Overpass API returned an invalid response.")
+
+            # Validate top-level response structure
+            if not isinstance(data, dict):
+                raise RuntimeError("Overpass API returned an unexpected response format.")
             
             elements = data.get("elements", [])
+
+            # Validate elements structure
+            if not isinstance(elements, list):
+                raise RuntimeError("Overpass API returned invalid POI data.")
             
             categorized_pois = {interest: [] for interest in interests}
             
             for elem in elements:
-                poi_lat = elem.get("lat") or elem.get("center", {}).get("lat")
-                poi_lon = elem.get("lon") or elem.get("center", {}).get("lon")
+
+                if not isinstance(elem, dict):
+                    continue  # Skip invalid elements
+
+                center = elem.get("center", {})
+
+                if not isinstance(center, dict):
+                    center = {}
+
+                poi_lat = (elem.get("lat") if elem.get("lat") is not None else center.get("lat"))
+                poi_lon = (elem.get("lon") if elem.get("lon") is not None else center.get("lon"))
                 
                 tags_dict = elem.get("tags", {})
+
+                if not isinstance(tags_dict, dict):
+                    continue  # Skip if tags are not in expected format
+
                 name = tags_dict.get("name")
 
-                if not name or not poi_lat or not poi_lon:
+                if not name or poi_lat is None or poi_lon is None:
                     continue
                 
                 if dietary != "omnivore":
@@ -150,23 +199,35 @@ class MapService:
                 category = (tags_dict.get("historic") or tags_dict.get("tourism") or tags_dict.get("amenity") or "point_of_interest")
                 osm_id = f"{elem.get('type')}_{elem.get('id')}"
 
-                poi_obj = POIModel(
-                    poi_id=osm_id,
-                    name=name,
-                    category=category,
-                    lat=float(poi_lat),
-                    lon=float(poi_lon),
-                    url=tags_dict.get("website", "")
-                )
+                try:
+                    poi_obj = POIModel(
+                        poi_id=osm_id,
+                        name=name,
+                        category=category,
+                        lat=float(poi_lat),
+                        lon=float(poi_lon),
+                        url=tags_dict.get("website", "")
+                    )
+                except (TypeError, ValueError):
+                    continue
 
                 matched = False
                 for interest in interests:
-                    if interest in INTEREST_TO_TAGS:
-                        for tag_key, tag_val in INTEREST_TO_TAGS[interest]:
-                            if tag_key in tags_dict and any(v in tags_dict[tag_key] for v in tag_val.split("|")):
-                                categorized_pois[interest].append(poi_obj)
-                                matched = True
-                                break
+
+                    if interest not in INTEREST_TO_TAGS:
+                        continue
+
+                    for tag_key, tag_val in INTEREST_TO_TAGS[interest]:
+
+                        tag_value = tags_dict.get(tag_key)
+                        # Ignore malformed tag values
+                        if not isinstance(tag_value, str):
+                            continue
+
+                        if any(v in tag_value for v in tag_val.split("|")):
+                            categorized_pois[interest].append(poi_obj)
+                            matched = True
+                            break
                 
                 if not matched and interests and interests[0] in categorized_pois:
                     categorized_pois[interests[0]].append(poi_obj)
@@ -179,9 +240,10 @@ class MapService:
                 seen_ids = set()
                 unique_list = []
                 for p in poi_list:
-                    if p.poi_id not in seen_ids:
-                        seen_ids.add(p.poi_id)
-                        unique_list.append(p)
+                    if p.poi_id in seen_ids:
+                        continue
+                    seen_ids.add(p.poi_id)
+                    unique_list.append(p)
                 
                 balanced_pois.extend(unique_list[:max_per_interest])
 
@@ -189,6 +251,3 @@ class MapService:
             
         except requests.RequestException as e:
             raise RuntimeError(f"Overpass API is unavailable: {e}")
-
-        except ValueError as e:
-            raise RuntimeError(f"Invalid response received from Overpass API: {e}")
