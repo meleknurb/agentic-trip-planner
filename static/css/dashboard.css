@@ -773,3 +773,101 @@ body {
 .downvote-btn{
     background:transparent;
 }
+
+/* Trace Panel Styles */
+.trace-panel {
+    margin-top: 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.trace-header {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    background: #f8fafc;
+    user-select: none;
+}
+
+.trace-header:hover {
+    background: #f1f5f9;
+}
+
+.trace-body {
+    max-height: 400px;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.trace-body.collapsed {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.generation-empty-state {
+    padding: 12px;
+    font-size: 0.8rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.generation-trace-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.8rem;
+    gap: 10px;
+}
+
+.generation-trace-item:last-child {
+    border-bottom: none;
+}
+
+.generation-trace-icon {
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+}
+
+.generation-trace-info {
+    flex: 1;
+}
+
+.generation-trace-title {
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.generation-trace-description {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.generation-trace-duration {
+    color: #475569;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.generation-total-time, .trace-total {
+    padding: 10px 12px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 0.8rem;
+    background: #f8fafc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
