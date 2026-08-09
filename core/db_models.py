@@ -63,3 +63,18 @@ class Feedback(db.Model):
     message = db.Column(db.Text, nullable=False)
     feedback_type = db.Column(db.String(20), nullable=False)  # e.g., 'bug', 'feature', 'general'
     created_at = db.Column(db.DateTime, default=db.func.now())
+
+class GenerationTrace(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    itinerary_id = db.Column(db.Integer,db.ForeignKey('itinerary.id'),nullable=False)
+    generation_type = db.Column(db.String(30),nullable=False,default="initial")
+
+    geocoding_duration = db.Column(db.Float, nullable=True)
+    poi_collection_duration = db.Column(db.Float, nullable=True)
+    rag_retrieval_duration = db.Column(db.Float, nullable=True)
+    gemini_generation_duration = db.Column(db.Float, nullable=True)
+    total_duration = db.Column(db.Float, nullable=True)
+
+    created_at = db.Column(db.DateTime,default=db.func.now())
+
+    itinerary = db.relationship('Itinerary', backref=db.backref('generation_trace', lazy=True, cascade='all, delete-orphan'))
