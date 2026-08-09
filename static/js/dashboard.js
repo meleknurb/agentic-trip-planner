@@ -69,6 +69,21 @@ function toggleSingleDayRegenBox(dayNumber) {
     }
 }
 
+/**
+ * Toggles the visibility of the itinerary generation trace panel and updates the toggle icon orientation.
+ */
+function toggleTracePanel() {
+    const traceBody = document.getElementById("traceBody");
+    const icon = document.getElementById("traceToggleIcon");
+    
+    traceBody.classList.toggle("collapsed");
+    if (traceBody.classList.contains("collapsed")) {
+        icon.style.transform = "rotate(-90deg)";
+    } else {
+        icon.style.transform = "rotate(0deg)";
+    }
+}
+
 // 3. MAP FILTERING & CONTROL LOGIC
 
 /**
@@ -220,6 +235,7 @@ async function loadItineraryData(id) {
 
             currentItineraryData = data;
             currentItineraryData.feedbackStats = feedbackStats;
+            currentItineraryData.trace = res.trace || null;
             
             // Auto-populate sidebar form fields with fetched itinerary data to preserve UX state.
             const cityInput = document.getElementById("city");
@@ -255,6 +271,10 @@ async function loadItineraryData(id) {
                 ragBox.innerHTML = marked.parse(data.rag_context);
             } else {
                 ragBox.innerText = "No additional cultural guide notes found for this destination.";
+            }
+
+            if (res.trace) {
+                renderGenerationTrace(res.trace);
             }
             
             document.getElementById("planTitle").innerText = data.title;
@@ -430,6 +450,9 @@ async function submitPlanRegeneration() {
         if (result.success) {
             showNotification(result.message, "success");
             await loadItineraryData(result.itinerary_id);
+            if (result.trace) {
+                renderGenerationTrace(result.trace);
+            }
         } else {
             showNotification(`AI Regeneration failed: ${result.message || 'Unknown internal service exception.'}`, "error");
             document.getElementById("loadingState").classList.add("hidden");
@@ -493,6 +516,9 @@ async function submitSingleDayRegeneration(dayNumber) {
         if (result.success) {
             showNotification(result.message, "success");
             await loadItineraryData(currentLoadedItineraryId);
+            if (result.trace) {
+                renderGenerationTrace(result.trace);
+            }
         } else {
             showNotification(`Single day regeneration failed: ${result.message}`, "error");
             document.getElementById("loadingState").classList.add("hidden");
@@ -552,6 +578,91 @@ async function submitPoiFeedback(city, poiId, voteType, buttonElement) {
     }
 }
 
+/**
+ * Converts internal generation step names into user-friendly labels.
+ */
+function renderGenerationTrace(trace) {
+    const traceList = document.getElementById("generationTraceList");
+    const totalTime = document.getElementById("generationTotalTime");
+
+    if (!traceList || !totalTime) return;
+
+    traceList.innerHTML = "";
+    totalTime.innerHTML = "";
+
+    if (!trace || !Array.isArray(trace.steps)) {
+        traceList.innerHTML = `
+            <p class="generation-empty-state">
+                Trip creation details are not available for this itinerary.
+            </p>
+        `;
+        return;
+    }
+
+    const stepLabels = {
+        "Geocoding": {
+            icon: "📍",
+            title: "Finding your destination",
+            description: "Locating your destination on the map."
+        },
+        "POI collection": {
+            icon: "🗺️",
+            title: "Discovering places nearby",
+            description: "Finding interesting places around your destination."
+        },
+        "RAG retrieval": {
+            icon: "📖",
+            title: "Gathering local insights",
+            description: "Adding cultural and destination-specific information."
+        },
+        "Gemini generation": {
+            icon: "✨",
+            title: "Creating your personalized plan",
+            description: "Building your itinerary around your selected interests."
+        }
+    };
+
+    trace.steps.forEach(step => {
+        const info = stepLabels[step.step] || {
+            icon: "🔹",
+            title: step.step,
+            description: "Processing your itinerary."
+        };
+
+        const stepElement = document.createElement("div");
+        stepElement.className = "generation-trace-item";
+
+        stepElement.innerHTML = `
+            <div class="generation-trace-icon">
+                ${info.icon}
+            </div>
+
+            <div class="generation-trace-info">
+                <div class="generation-trace-title">
+                    ${info.title}
+                </div>
+
+                <div class="generation-trace-description">
+                    ${info.description}
+                </div>
+            </div>
+
+            <div class="generation-trace-duration">
+                ${Number(step.duration || 0).toFixed(1)}s
+            </div>
+        `;
+
+        traceList.appendChild(stepElement);
+    });
+
+    if (typeof trace.total_duration === "number") {
+        totalTime.innerHTML = `
+            <span>⏱️ Total time</span>
+            <span class="generation-trace-duration">${trace.total_duration.toFixed(1)}s</span>
+        `;
+    }
+}
+
 // 6. EVENT LISTENERS & LIFECYCLE HOOKS
 
 document.getElementById("itineraryForm").addEventListener("submit", async function(e) {
@@ -581,6 +692,15 @@ document.getElementById("itineraryForm").addEventListener("submit", async functi
         
         if (result.success) {
             showNotification(result.message, "success");
+
+            if (result.trace) {
+                try {
+                    renderGenerationTrace(result.trace);
+                } catch (err) {
+                    showNotification("Error rendering generation trace", "error");
+                }
+            }
+
             await loadItineraryData(result.itinerary_id);
             const newUrl = `${window.location.pathname}?itinerary_id=${result.itinerary_id}`;
             window.history.pushState({ path: newUrl }, '', newUrl);
@@ -611,3 +731,4 @@ window.toggleSingleDayRegenBox = toggleSingleDayRegenBox;
 window.submitPlanRegeneration = submitPlanRegeneration;
 window.submitSingleDayRegeneration = submitSingleDayRegeneration;
 window.submitPoiFeedback = submitPoiFeedback;
+window.toggleTracePanel = toggleTracePanel;
