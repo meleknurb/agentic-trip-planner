@@ -92,6 +92,23 @@
                     </button>
                 </form>
             </div>
+
+            <div id="tracePanel" class="trace-panel">
+                <div class="trace-header" onclick="toggleTracePanel()">
+                    <span>⚙️ How Your Trip Was Created</span>
+                    <span id="traceToggleIcon" style="font-size: 0.75rem; transition: transform 0.2s; transform: rotate(-90deg);">▼</span>
+                </div>
+
+                <div id="traceBody" class="trace-body collapsed">
+                    <div id="generationTraceList" class="trace-list-container">
+                        <p class="generation-empty-state">
+                            Generate a route to see execution timings.
+                        </p>
+                    </div>
+                    <div id="generationTotalTime" class="trace-total"></div>
+                </div>
+            </div>
+
         </aside>
 
         <main class="content-panel">
