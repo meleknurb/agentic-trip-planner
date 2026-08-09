@@ -119,135 +119,199 @@ class MapService:
             raise RuntimeError(f"Geocoding service unavailable: {e}")
 
     def fetch_live_pois(self, lat: float, lon: float, interests: List[str], dietary: str, boost_scores: Dict[str, float] | None = None, radius_meters: int = 10000) -> List[POIModel]:
-        """Fetch live points of interest (POIs) around the specified coordinates, 
-        categorizing and balancing them across user interests to prevent bias."""
+        """
+        Fetch live points of interest (POIs) around the specified coordinates, categorizing and balancing them across user interests to prevent bias.
+        """
 
         if boost_scores is None:
             boost_scores = {}
-        
-        target_tags = []
+
+        target_tags: List[Tuple[str, str]] = []
+
         for interest in interests:
             if interest in INTEREST_TO_TAGS:
                 target_tags.extend(INTEREST_TO_TAGS[interest])
-        
+
         if not target_tags:
             target_tags = DEFAULT_TAGS
 
-        node_queries = ""
-        for key, val in target_tags:
-            node_queries += f'node["{key}"~"{val}"](around:{radius_meters},{lat},{lon});'
-            node_queries += f'way["{key}"~"{val}"](around:{radius_meters},{lat},{lon});'
-            
-        overpass_query = f"""
+        grouped_tags: Dict[str, set[str]] = {}
+
+        for key, values in target_tags:
+            grouped_tags.setdefault(key, set()).update(values.split("|"))
+
+
+        query_fragments: List[str] = []
+
+        for key in sorted(grouped_tags):
+            values = grouped_tags[key]
+            regex = "|".join(sorted(values))
+
+            query_fragments.append(
+                f'node["{key}"~"{regex}"]["name"]'
+                f'(around:{{radius}},{lat},{lon});'
+            )
+
+            query_fragments.append(
+                f'way["{key}"~"{regex}"]["name"]'
+                f'(around:{{radius}},{lat},{lon});'
+            )
+
+        query_template = f"""
         [out:json][timeout:60];
         (
-            {node_queries}
+            {"".join(query_fragments)}
         );
-        out center;
+        out tags center qt;
         """
 
-        try:
-            response = self.session.post(self.overpass_url, data={"data": overpass_query}, headers=self.headers, timeout=70)
-            response.raise_for_status()
+        candidate_radii = [radius for radius in (5000, radius_meters) if radius <= radius_meters]
+        search_radii = list(dict.fromkeys(candidate_radii))
 
-            # Handle malformed JSON responses
+        if not search_radii:
+            search_radii = [radius_meters]
+
+        target_poi_count = min(45,max(8, len(interests) * 8))
+
+        last_error = None
+        best_pois: List[POIModel] = []
+
+        for current_radius in search_radii:
+            overpass_query = query_template.format(radius=current_radius)
+
             try:
-                data = response.json()
-            except ValueError:
-                raise RuntimeError("Overpass API returned an invalid response.")
+                response = self.session.post(
+                    self.overpass_url,
+                    data={"data": overpass_query},
+                    headers=self.headers,
+                    timeout=70
+                )
 
-            # Validate top-level response structure
-            if not isinstance(data, dict):
-                raise RuntimeError("Overpass API returned an unexpected response format.")
-            
-            elements = data.get("elements", [])
-
-            # Validate elements structure
-            if not isinstance(elements, list):
-                raise RuntimeError("Overpass API returned invalid POI data.")
-            
-            categorized_pois = {interest: [] for interest in interests}
-            
-            for elem in elements:
-
-                if not isinstance(elem, dict):
-                    continue  # Skip invalid elements
-
-                center = elem.get("center", {})
-
-                if not isinstance(center, dict):
-                    center = {}
-
-                poi_lat = (elem.get("lat") if elem.get("lat") is not None else center.get("lat"))
-                poi_lon = (elem.get("lon") if elem.get("lon") is not None else center.get("lon"))
-                
-                tags_dict = elem.get("tags", {})
-
-                if not isinstance(tags_dict, dict):
-                    continue  # Skip if tags are not in expected format
-
-                name = tags_dict.get("name")
-
-                if not name or poi_lat is None or poi_lon is None:
-                    continue
-                
-                if dietary != "omnivore":
-                    diet_tag = tags_dict.get(f"diet:{dietary}")
-                    if diet_tag == "no":
-                        continue
-                    
-                category = (tags_dict.get("historic") or tags_dict.get("tourism") or tags_dict.get("amenity") or "point_of_interest")
-                osm_id = f"{elem.get('type')}_{elem.get('id')}"
+                response.raise_for_status()
 
                 try:
-                    poi_obj = POIModel(
-                        poi_id=osm_id,
-                        name=name,
-                        category=category,
-                        lat=float(poi_lat),
-                        lon=float(poi_lon),
-                        url=tags_dict.get("website", "")
-                    )
-                except (TypeError, ValueError):
-                    continue
+                    data = response.json()
+                except ValueError:
+                    raise RuntimeError("Overpass API returned an invalid response.")
 
-                matched = False
-                for interest in interests:
+                if not isinstance(data, dict):
+                    raise RuntimeError("Overpass API returned an unexpected response format.")
 
-                    if interest not in INTEREST_TO_TAGS:
+                elements = data.get("elements", [])
+
+                if not isinstance(elements, list):
+                    raise RuntimeError("Overpass API returned invalid POI data.")
+
+                categorized_pois = {interest: [] for interest in interests}
+
+                for elem in elements:
+                    if not isinstance(elem, dict):
                         continue
 
-                    for tag_key, tag_val in INTEREST_TO_TAGS[interest]:
+                    center = elem.get("center", {})
 
-                        tag_value = tags_dict.get(tag_key)
-                        # Ignore malformed tag values
-                        if not isinstance(tag_value, str):
+                    if not isinstance(center, dict):
+                        center = {}
+
+                    poi_lat = (elem.get("lat") if elem.get("lat") is not None else center.get("lat"))
+                    poi_lon = (elem.get("lon") if elem.get("lon") is not None else center.get("lon"))
+
+                    tags_dict = elem.get("tags", {})
+
+                    if not isinstance(tags_dict, dict):
+                        continue
+
+                    name = tags_dict.get("name")
+
+                    if not name or poi_lat is None or poi_lon is None:
+                        continue
+
+                    if dietary != "omnivore":
+                        diet_tag = tags_dict.get(f"diet:{dietary}")
+
+                        if diet_tag == "no":
                             continue
 
-                        if any(v in tag_value for v in tag_val.split("|")):
-                            categorized_pois[interest].append(poi_obj)
-                            matched = True
-                            break
-                
-                if not matched and interests and interests[0] in categorized_pois:
-                    categorized_pois[interests[0]].append(poi_obj)
+                    category = (tags_dict.get("historic") or tags_dict.get("tourism") or tags_dict.get("amenity") or "point_of_interest")
 
-            balanced_pois = []
-            max_per_interest = 8
-            
-            for interest, poi_list in categorized_pois.items():
-                poi_list.sort(key=lambda poi: boost_scores.get(poi.poi_id, 0),reverse=True)
-                seen_ids = set()
-                unique_list = []
-                for p in poi_list:
-                    if p.poi_id in seen_ids:
+                    osm_id = (f"{elem.get('type')}_{elem.get('id')}")
+
+                    try:
+                        poi_obj = POIModel(
+                            poi_id=osm_id,
+                            name=name,
+                            category=category,
+                            lat=float(poi_lat),
+                            lon=float(poi_lon),
+                            url=tags_dict.get("website", "")
+                        )
+                    except (TypeError, ValueError):
                         continue
-                    seen_ids.add(p.poi_id)
-                    unique_list.append(p)
-                
-                balanced_pois.extend(unique_list[:max_per_interest])
 
-            return balanced_pois[:45]
-            
-        except requests.RequestException as e:
-            raise RuntimeError(f"Overpass API is unavailable: {e}")
+                    matched = False
+                    for interest in interests:
+
+                        if interest not in INTEREST_TO_TAGS:
+                            continue
+
+                        for tag_key, tag_val in INTEREST_TO_TAGS[interest]:
+                            tag_value = tags_dict.get(tag_key)
+
+                            if not isinstance(tag_value, str):
+                                continue
+
+                            possible_values = tag_val.split("|")
+
+                            if any(value in tag_value for value in possible_values):
+                                categorized_pois[interest].append(poi_obj)
+                                matched = True
+                                break
+
+                        if matched:
+                            break
+
+                    if (not matched and interests and interests[0] in categorized_pois):
+                        categorized_pois[interests[0]].append(poi_obj)
+
+
+                balanced_pois: List[POIModel] = []
+                max_per_interest = 8
+
+                for interest, poi_list in categorized_pois.items():
+                    poi_list.sort(key=lambda poi: boost_scores.get(poi.poi_id,0),reverse=True)
+                    seen_ids = set()
+                    unique_list = []
+
+                    for poi in poi_list:
+                        if poi.poi_id in seen_ids:
+                            continue
+                        seen_ids.add(poi.poi_id)
+                        unique_list.append(poi)
+
+                    balanced_pois.extend(unique_list[:max_per_interest])
+
+                balanced_pois = balanced_pois[:45]
+
+                if len(balanced_pois) > len(best_pois):
+                    best_pois = balanced_pois
+
+                if len(balanced_pois) >= target_poi_count:
+                    return balanced_pois
+
+            except requests.RequestException as e:
+                last_error = e
+                continue
+
+            except RuntimeError as e:
+                last_error = e
+                continue
+
+        if best_pois:
+            return best_pois[:45]
+
+        if last_error is not None:
+            if isinstance(last_error,requests.RequestException):
+                raise RuntimeError(f"Overpass API is unavailable: {last_error}")
+            raise RuntimeError(str(last_error))
+
+        return []
