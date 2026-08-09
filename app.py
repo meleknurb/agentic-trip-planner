@@ -9,7 +9,7 @@ from flask_login import login_user, logout_user, current_user, login_required
 from werkzeug.exceptions import BadRequest
 
 from core.config import Config
-from core.db_models import db, User, Itinerary, ItineraryDay, ItineraryActivity, Feedback, login_manager
+from core.db_models import db, User, Itinerary, ItineraryDay, ItineraryActivity, Feedback, GenerationTrace, login_manager
 from core.forms import RegisterForm, LoginForm, UpdatePasswordForm
 
 from agent.gemini_agent import GeminiAgent
@@ -206,7 +206,10 @@ def generate_itinerary():
             "success": False,
             "message": f"Invalid interest categories: {', '.join(invalid_interests)}."
         }), 400
-    
+
+    trace = []
+    workflow_start = time.perf_counter()
+
     try:
         user_prefs = {
             'pace': current_user.travel_pace,
@@ -216,8 +219,14 @@ def generate_itinerary():
         boost_scores = feedback_service.calculate_boost_scores(city.lower())
 
         # Geocoding & Live OpenStreetMap POI collection via MapService
+        geocoding_start = time.perf_counter()
         try:
             lat, lon = map_service.get_coordinates(city)
+            trace.append({
+                "step": "Geocoding",
+                "status": "completed",
+                "duration": round(time.perf_counter() - geocoding_start, 3)
+            })
 
         except ValueError as e:
             return jsonify({
@@ -231,9 +240,15 @@ def generate_itinerary():
                 "message": "The geocoding service is temporarily unavailable. Please try again later."
             }), 503
 
+        poi_start = time.perf_counter()
         try:
             live_pois = map_service.fetch_live_pois(lat, lon, interests=detected_interests, dietary=user_prefs['diet'],boost_scores=boost_scores)
-
+            trace.append({
+                "step": "POI collection",
+                "status": "completed",
+                "duration": round(time.perf_counter() - poi_start, 3),
+                "details": {"poi_count": len(live_pois)}
+            })
         except RuntimeError:
             return jsonify({
                 "success": False,
@@ -253,9 +268,17 @@ def generate_itinerary():
         poi_lookup = {poi.poi_id: poi for poi in live_pois}
 
         # Context enrichment extracting local heuristics using the RAG index
+        rag_start = time.perf_counter()
         rag_context = rag_service.retrieve_relevant_context(city_name=city, interests=detected_interests, pace=user_prefs['pace'], dietary=user_prefs['diet'])
 
+        trace.append({
+            "step": "RAG retrieval",
+            "status": "completed",
+            "duration": round(time.perf_counter() - rag_start, 3)
+        })
+
         # Prompt synthesis and Gemini model transaction targeting structured schema blueprints
+        gemini_start = time.perf_counter()
         try:
             itinerary_data = agent.generate_itinerary(
                 city_name=city,
@@ -265,6 +288,11 @@ def generate_itinerary():
                 interests=detected_interests,
                 user_preferences=user_prefs
             )
+            trace.append({
+                "step": "Gemini generation",
+                "status": "completed",
+                "duration": round(time.perf_counter() - gemini_start, 3)
+            })
         except RuntimeError as e:
             return jsonify({
                 "success": False,
@@ -314,12 +342,30 @@ def generate_itinerary():
                     )
                     db.session.add(activity)
 
+        total_duration = round(time.perf_counter() - workflow_start, 3)
+        trace_durations = {step["step"]: step["duration"] for step in trace}
+
+        generation_trace = GenerationTrace(
+            itinerary_id=new_itinerary.id,
+            generation_type="initial",
+            geocoding_duration=trace_durations.get("Geocoding"),
+            poi_collection_duration=trace_durations.get("POI collection"),
+            rag_retrieval_duration=trace_durations.get("RAG retrieval"),
+            gemini_generation_duration=trace_durations.get("Gemini generation"),
+            total_duration=total_duration
+        )
+        db.session.add(generation_trace)
+
         db.session.commit()
 
         return jsonify({
             "success": True,
             "message": "Itinerary generated successfully",
-            "itinerary_id": new_itinerary.id
+            "itinerary_id": new_itinerary.id,
+            "trace": {
+                "steps": trace,
+                "total_duration": total_duration
+            }
         })
 
     except Exception as e:
@@ -393,6 +439,9 @@ def regenerate_itinerary():
                 "message": f"Invalid interest categories: {', '.join(invalid_interests)}."
             }), 400
 
+    trace = []
+    workflow_start = time.perf_counter()
+
     try:
         current_itinerary = Itinerary.query.filter_by(id=itinerary_id,user_id=current_user.id).first()
 
@@ -425,8 +474,14 @@ def regenerate_itinerary():
 
         boost_scores = feedback_service.calculate_boost_scores(city.lower())
 
+        geocoding_start = time.perf_counter()
         try:
             lat, lon = map_service.get_coordinates(city)
+            trace.append({
+                "step": "Geocoding",
+                "status": "completed",
+                "duration": round(time.perf_counter() - geocoding_start, 3)
+            })
 
         except ValueError as e:
             return jsonify({
@@ -440,8 +495,15 @@ def regenerate_itinerary():
                 "message": "The geocoding service is temporarily unavailable. Please try again later."
             }), 503
 
+        poi_start = time.perf_counter()
         try:
             live_pois = map_service.fetch_live_pois(lat, lon, interests=interests, dietary=user_prefs['diet'],boost_scores=boost_scores)
+            trace.append({
+                "step": "POI collection",
+                "status": "completed",
+                "duration": round(time.perf_counter() - poi_start, 3),
+                "details": {"poi_count": len(live_pois)}
+            })
 
         except RuntimeError:
             return jsonify({
@@ -461,8 +523,16 @@ def regenerate_itinerary():
 
         poi_lookup = {poi.poi_id: poi for poi in live_pois}
 
+        rag_start = time.perf_counter()
         rag_context = rag_service.retrieve_relevant_context(city_name=city, interests=interests, pace=user_prefs['pace'], dietary=user_prefs['diet'])
 
+        trace.append({
+            "step": "RAG retrieval",
+            "status": "completed",
+            "duration": round(time.perf_counter() - rag_start, 3)
+        })
+
+        gemini_start = time.perf_counter()
         try:
             itinerary_data = agent.regenerate_itinerary(
                 city_name=city,
@@ -474,6 +544,11 @@ def regenerate_itinerary():
                 interests=interests,
                 user_preferences=user_prefs
             )
+            trace.append({
+                "step": "Gemini generation",
+                "status": "completed",
+                "duration": round(time.perf_counter() - gemini_start, 3)
+            })
         except RuntimeError as e:
             return jsonify({
                 "success": False,
@@ -523,12 +598,30 @@ def regenerate_itinerary():
 
                     db.session.add(activity)
 
+        total_duration = round(time.perf_counter() - workflow_start, 3)
+        trace_durations = {step["step"]: step["duration"] for step in trace}
+
+        generation_trace = GenerationTrace(
+            itinerary_id=current_itinerary.id,
+            generation_type="regenerate",
+            geocoding_duration=trace_durations.get("Geocoding"),
+            poi_collection_duration=trace_durations.get("POI collection"),
+            rag_retrieval_duration=trace_durations.get("RAG retrieval"),
+            gemini_generation_duration=trace_durations.get("Gemini generation"),
+            total_duration=total_duration
+        )
+        db.session.add(generation_trace)
+
         db.session.commit()
 
         return jsonify({
             "success": True,
             "message": "Itinerary regenerated successfully.",
-            "itinerary_id": current_itinerary.id
+            "itinerary_id": current_itinerary.id,
+            "trace": {
+                "steps": trace,
+                "total_duration": total_duration
+            }
         })
 
     except Exception:
@@ -574,6 +667,9 @@ def regenerate_single_day():
             "success": False,
             "message": "Day number must be greater than zero."
         }), 400
+
+    trace = []
+    workflow_start = time.perf_counter()
 
     try:
         current_itinerary = Itinerary.query.filter_by(id=itinerary_id,user_id=current_user.id).first()
@@ -629,8 +725,14 @@ def regenerate_single_day():
         boost_scores = feedback_service.calculate_boost_scores(city.lower())
 
         # Fetch POIs using ORIGINAL itinerary interests
+        geocoding_start = time.perf_counter()
         try:
             lat, lon = map_service.get_coordinates(city)
+            trace.append({
+                "step": "Geocoding",
+                "status": "completed",
+                "duration": round(time.perf_counter() - geocoding_start, 3)
+            })
 
         except ValueError as e:
             return jsonify({
@@ -644,9 +746,15 @@ def regenerate_single_day():
                 "message": "The geocoding service is temporarily unavailable. Please try again later."
             }), 503
 
+        poi_start = time.perf_counter()
         try:
             live_pois = map_service.fetch_live_pois(lat,lon,interests=interests,dietary=user_prefs["diet"],boost_scores=boost_scores)
-
+            trace.append({
+                "step": "POI collection",
+                "status": "completed",
+                "duration": round(time.perf_counter() - poi_start, 3),
+                "details": {"poi_count": len(live_pois)}
+            })
         except RuntimeError:
             return jsonify({
                 "success": False,
@@ -666,8 +774,16 @@ def regenerate_single_day():
         poi_lookup = {poi.poi_id: poi for poi in live_pois}
 
         # Preserve existing RAG context
+        rag_start = time.perf_counter()
         rag_context = current_itinerary.rag_context
 
+        trace.append({
+            "step": "RAG retrieval",
+            "status": "completed",
+            "duration": round(time.perf_counter() - rag_start, 3)
+        })
+
+        gemini_start = time.perf_counter()
         try:
             itinerary_data = agent.regenerate_single_day(
                 city_name=city,
@@ -681,6 +797,11 @@ def regenerate_single_day():
                 user_preferences=user_prefs,
                 other_days_summary=other_days_summary
             )
+            trace.append({
+                "step": "Gemini generation",
+                "status": "completed",
+                "duration": round(time.perf_counter() - gemini_start, 3)
+            })
         except RuntimeError as e:
             return jsonify({
                 "success": False,
@@ -731,6 +852,20 @@ def regenerate_single_day():
         if not updated:
             raise RuntimeError("Gemini did not return the requested day.")
 
+        total_duration = round(time.perf_counter() - workflow_start, 3)
+        trace_durations = {step["step"]: step["duration"] for step in trace}
+
+        generation_trace = GenerationTrace(
+            itinerary_id=current_itinerary.id,
+            generation_type="regenerate_day",
+            geocoding_duration=trace_durations.get("Geocoding"),
+            poi_collection_duration=trace_durations.get("POI collection"),
+            rag_retrieval_duration=trace_durations.get("RAG retrieval"),
+            gemini_generation_duration=trace_durations.get("Gemini generation"),
+            total_duration=total_duration
+        )
+        db.session.add(generation_trace)
+
         db.session.commit()
 
         return jsonify({
@@ -754,6 +889,19 @@ def get_itinerary(itinerary_id):
     itinerary = Itinerary.query.filter_by(id=itinerary_id, user_id=current_user.id).first()
     if not itinerary:
         return jsonify({"success": False, "message": "Requested itinerary not found."}), 404
+
+    trace_obj = GenerationTrace.query.filter_by(itinerary_id=itinerary_id).order_by(GenerationTrace.created_at.desc()).first()
+    trace_data = None
+    if trace_obj:
+        trace_data = {
+            "steps": [
+                {"step": "Geocoding", "duration": trace_obj.geocoding_duration},
+                {"step": "POI collection", "duration": trace_obj.poi_collection_duration},
+                {"step": "RAG retrieval", "duration": trace_obj.rag_retrieval_duration},
+                {"step": "Gemini generation", "duration": trace_obj.gemini_generation_duration}
+            ],
+            "total_duration": trace_obj.total_duration
+        }
 
     feedback_stats = feedback_service.get_feedback_statistics(itinerary.city)
 
@@ -784,7 +932,7 @@ def get_itinerary(itinerary_id):
             })
         result["days"].append(day_data)
 
-    return jsonify({"success": True, "data": result, "feedback_stats": feedback_stats})
+    return jsonify({"success": True, "data": result, "feedback_stats": feedback_stats, "trace": trace_data})
 
 @app.route("/submit_poi_feedback", methods=["POST"])
 @login_required
