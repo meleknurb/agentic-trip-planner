@@ -64,6 +64,8 @@ class Feedback(db.Model):
     feedback_type = db.Column(db.String(20), nullable=False)  # e.g., 'bug', 'feature', 'general'
     created_at = db.Column(db.DateTime, default=db.func.now())
 
+    user = db.relationship('User', backref=db.backref('feedbacks', lazy=True, cascade='all, delete-orphan'))
+
 class GenerationTrace(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     itinerary_id = db.Column(db.Integer,db.ForeignKey('itinerary.id'),nullable=False)
@@ -74,7 +76,6 @@ class GenerationTrace(db.Model):
     rag_retrieval_duration = db.Column(db.Float, nullable=True)
     gemini_generation_duration = db.Column(db.Float, nullable=True)
     total_duration = db.Column(db.Float, nullable=True)
-
     created_at = db.Column(db.DateTime,default=db.func.now())
 
     itinerary = db.relationship('Itinerary', backref=db.backref('generation_trace', lazy=True, cascade='all, delete-orphan'))
